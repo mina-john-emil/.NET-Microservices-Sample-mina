@@ -1,41 +1,38 @@
-
 services:
-
   orderdb:
     container_name: orderdb
     restart: always
     ports:
-        - "27017:27017"
+      - "27017:27017"
     volumes:
-        - microservice-mongodata:/data/db
+      - microservice-mongodata:/data/db
 
   mongoclient:
     container_name: mongoclient
     ports:
-        - "27018:3000"
+      - "27018:3000"
 
   redisdb:
     container_name: redisdb
-    restart: always    
+    restart: always
     ports:
-        - "6379:6379"
-    volumes: 
-        - microservice-redisdata:/data
+      - "6379:6379"
+    volumes:
+      - microservice-redisdata:/data
 
   sqldata:
     container_name: sqldata
+    image: mcr.microsoft.com/mssql/server:2019-latest
     ports:
       - "1434:1433"
-    environment: 
+    environment:
       - ACCEPT_EULA=Y
-      - SA_PASSWORD=123321Aa@
-    volumes: 
+      - MSSQL_SA_PASSWORD=123321Aa@
+    volumes:
       - microservice-sqldata:/var/opt/mssql
-    # networks:
-    #   - microservice-network
 
   rabbitmq:
-    container_name: rabbitmq 
+    container_name: rabbitmq
     ports:
       - "15672:15672"
       - "5672:5672"
@@ -54,198 +51,142 @@ services:
     container_name: microservices-order.api
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
+      - ASPNETCORE_URLS=http://+:80
       - OrderConnection=Server=sqldata;Database=MicroserviceOrderDB;User Id=sa;password=123321Aa@;Encrypt=False;TrustServerCertificate=true;
-      - DatabaseSettings__ConnectionString=mongodb://orderdb
+      - DatabaseSettings__ConnectionString=mongodb://orderdb:27017
       - DatabaseSettings__DatabaseName=MicroserviceOrderDB
-      - MicroServiceAddress__Product__Uri=http://microservices-product.api
-      - Identity__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7018
-      - Identity__Audience=OrderService
-      - Identity__Scopes__OrdersManagement=OrdersManagement
-      - Identity__Scopes__GetOrders=GetOrders
-      # - RabbitMq:HostName=amqp://guest:guest@rabbitmq:5672
-      # - RabbitMq:HostName=amqp://guest:guest@rabbitmq:5672
-      # - RabbitMq:HostName=http://host.docker.internal:5672
+      - MicroServiceAddress__Product__Uri=http://productservice
+      - Identity__Uri=http://192.168.150.131:7018
       - RabbitMq__Uri=amqp://guest:guest@rabbitmq:5672
-      - RabbitMq__HostName=localhost
-      - RabbitMq__Port=5672
-      - RabbitMq__UserName=ghost 
-      - RabbitMq__Password=ghost
+      - RabbitMq__HostName=rabbitmq
     ports:
       - "7002:80"
     depends_on:
       - sqldata
       - identityservice
       - rabbitmq
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
   basketservice:
-    container_name: microservices-basket.api    
+    container_name: microservices-basket.api
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
+      - ASPNETCORE_URLS=http://+:80
       - BasketConnection=Server=sqldata;Database=MicroserviceBasketDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
       - CacheSettings__ConnectionString=redisdb
       - RabbitMq__Uri=amqp://guest:guest@rabbitmq:5672
-      - MicroServiceAddress__Discount__Uri=http://microservices-discount.api
-      - MicroServiceAddress__DiscountGrpc__Uri=http://microservices-discount.api:81
-      - Identity__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7018
-      - Identity__Audience=BasketService
+      - MicroServiceAddress__Discount__Uri=http://discountservice
+      - MicroServiceAddress__DiscountGrpc__Uri=http://discountservice:81
+      - Identity__Uri=http://192.168.150.131:7018
     ports:
       - "6002:80"
     depends_on:
       - sqldata
       - identityservice
-      - rabbitmq
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
+      - redisdb
 
   discountservice:
     container_name: microservices-discount.api
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      # - ASPNETCORE_URLS=http://0.0.0.0:80
       - DiscountConnection=Server=sqldata;Database=MicroserviceDiscountDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
-      - Kestrel__Endpoints__HTTP__Url=http://0.0.0.0:80
-      - Kestrel__Endpoints__GRPC__Url=http://0.0.0.0:81
+      - Kestrel__Endpoints__HTTP__Url=http://+:80
+      - Kestrel__Endpoints__GRPC__Url=http://+:81
       - Kestrel__Endpoints__GRPC__Protocols=Http2
     ports:
       - "8002:80"
       - "8003:81"
     depends_on:
       - sqldata
-      - identityservice
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
   productservice:
     container_name: microservices-product.api
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
+      - ASPNETCORE_URLS=http://+:80
       - ProductConnection=Server=sqldata;Database=MicroserviceProductDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
-      - RabbitMq__Uri=amqp://guest:guest@rabbitmq:5672
-      - Identity__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7018
-      - Identity__Audience=ProductService
-      - Identity__Scopes__ProductsManagement=ProductsManagement
+      - Identity__Uri=http://192.168.150.131:7018
     ports:
       - "11002:80"
     depends_on:
       - sqldata
-      - identityservice
-      - rabbitmq
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
   paymentservice.endpoint:
     container_name: microservices-payment.api
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
+      - ASPNETCORE_URLS=http://+:80
       - PaymentConnection=Server=sqldata;Database=MicroservicePaymentDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
       - RabbitMq__Uri=amqp://guest:guest@rabbitmq:5672
-      - Identity__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7018
-      - Identity__Audience=PaymentService
+      - Identity__Uri=http://192.168.150.131:7018
     ports:
       - "10002:80"
     depends_on:
       - sqldata
       - identityservice
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
   identityservice:
     container_name: microservices-identity.api
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
+      - ASPNETCORE_URLS=http://+:80
       - AspIdentityConnection=Server=sqldata;Database=MicroserviceAspIdentityDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
-      - WebFrontend__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:44328
-      - AdminFrontend__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7298
+      - WebFrontend__Uri=http://192.168.150.131:44328
+      - AdminFrontend__Uri=http://192.168.150.131:7298
     ports:
       - "7018:80"
     depends_on:
       - sqldata
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
   apigateway.admin:
     container_name: microservices-apigateway.admin
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
-      - Identity__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7018
-      - Identity__Audience=ApiGatewayAdmin
+      - ASPNETCORE_URLS=http://+:80
+      - Identity__Uri=http://192.168.150.131:7018
     ports:
       - "11023:80"
     depends_on:
-      - sqldata
       - identityservice
-      - orderservice
-      - discountservice
-      - basketservice
-      - productservice
-      - paymentservice.endpoint
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
   apigateway.forweb:
     container_name: microservices-apigateway.forweb
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
-      - Identity__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7018
-      - Identity__Audience=ApiGatewayForWeb
-      - MicroserviceAddress__Discount__Uri=http://microservices-discount.api
-      - MicroserviceAddress__DiscountGrpc__Uri=http://microservices-discount.api:81
+      - ASPNETCORE_URLS=http://+:80
+      - Identity__Uri=http://192.168.150.131:7018
+      - MicroserviceAddress__Discount__Uri=http://discountservice
+      - MicroserviceAddress__DiscountGrpc__Uri=http://discountservice:81
     ports:
       - "10023:80"
     depends_on:
-      - sqldata
       - identityservice
-      - orderservice
-      - discountservice
-      - basketservice
-      - productservice
-      - paymentservice.endpoint
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
   microservices.admin.frontend:
     container_name: microservices.admin.frontend
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
-      - Identity__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7018
-      - MicroserviceAddress__AdminApiGateway__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:11023
+      - ASPNETCORE_URLS=http://+:80
+      - Identity__Uri=http://192.168.150.131:7018
+      - MicroserviceAddress__AdminApiGateway__Uri=http://192.168.150.131:11023
     ports:
       - "7298:80"
     depends_on:
       - apigateway.admin
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
   microservices.web.frontend:
     container_name: microservices.web.frontend
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://0.0.0.0:80
-      - MicroserviceAddress__ApiGatewayForWeb__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:10023
-      - Identity__Uri=http://${EXTERNAL_DNS_NAME_OR_IP}:7018
+      - ASPNETCORE_URLS=http://+:80
+      - MicroserviceAddress__ApiGatewayForWeb__Uri=http://192.168.150.131:10023
+      - Identity__Uri=http://192.168.150.131:7018
     ports:
       - "44328:80"
     depends_on:
       - apigateway.forweb
-    extra_hosts:
-      - "host.docker.internal:${EXTERNAL_DNS_NAME_OR_IP}"
 
 volumes:
   microservice-sqldata:
-    external: false
   microservice-mongodata:
-    external: false
-    # driver: local
   microservice-redisdata:
-    external: false
   portainer_data:
