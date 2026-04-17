@@ -1,0 +1,9 @@
+{
+  "GlobalConfiguration": {
+    "BaseUrl": "apigatewayforweb-clusterip-srv",
+    //"ServiceDiscoveryProvider": {
+    //  "Namespace": "dev",
+    //  "Type": "kube"
+    //}
+  }
+}

@@ -1,0 +1,77 @@
+﻿@model Microservices.Web.Frontend.Models.DTO.Order.OrderDetailDTO;
+@{
+    ViewData["Title"] = $"Order details {Model.OrderId}";
+}
+
+<h2>More information about your order</h2>
+
+@if (Model != null)
+{
+    <div class="row col-md-12">
+        <div class="row col-md-4">
+            <b>Order information</b>
+            <table class="table table-bordered table-hover table-secondary  ">
+                <tr>
+                    <td>Date of Registration</td>
+                    <td>Total Amount</td>
+                    <td>Payment status</td>
+                </tr>
+                <tr>
+                    <td>@Model.OrderPlaced</td>
+                    <td>@Model.TotalPrice.ToString("n0")</td>
+                    <td>@Model.OrderPaid</td>
+                </tr>
+            </table>
+        </div>
+        <div class="row col-md-6">
+            <b>Delivery address</b>
+            <table class="table table-bordered table-hover">
+                <tr>
+                    <td>Receiver</td>
+                    <td>Phone</td>
+                    <td>Address</td>
+                </tr>
+                <tr>
+                    <td> @Model.FirstName  @Model.LastName</td>
+                    <td>@Model.PhoneNumber </td>
+                    <td> @Model.Address </td>
+                </tr>
+            </table>
+        </div>
+        <div class="row col-md-12">
+            <b>products in this order</b>
+            <table class="table table-bordered table-hover">
+                <tr>
+                    <td>Product Name</td>
+                    <td>Unit price</td>
+                    <td>Count</td>
+                    <td>Total Price</td>
+                </tr>
+                <tr>
+                    @foreach (var item in Model.OrderLines)
+                    {
+                        <td>@item.Name</td>
+                        <td>@item.Price</td>
+                        <td>@item.Quantity</td>
+                        <td>
+                            @{
+                                int totalPrice = item.Price * item.Quantity;
+                            }  <b> @totalPrice.ToString("n0") </b>
+                        </td>
+                    }
+                </tr>
+            </table>
+        </div>
+        <div class="row col-md-12">
+            <b>products in this order</b>
+            <table class="table table-bordered table-hover">
+                <tr>
+                    <td>The amount of discount</td>
+                    <td> <b>@(Model.OrderLines.Sum(p => p.Price * p.Quantity) - Model.TotalPrice)</b>  </td>
+                    <td>Total Price</td>
+                    <td>@Model.TotalPrice </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+}

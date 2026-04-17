@@ -1,0 +1,54 @@
+{
+  "Routes": [
+    // ------------------- ProductManagement / api/ProductManagement
+    {
+      "DownstreamPathTemplate": "/api/ProductManagement",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "microservices-product.api",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/ProductManagement",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT" ],
+      "AuthenticationOptions": {
+        //"AuthenticationProviderKey": "ApiGatewayAdminAuthenticationScheme"
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/ProductManagement/{Id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "microservices-product.api",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/ProductManagement/{Id}",
+      "UpstreamHttpMethod": [ "GET" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+
+    // ------------------- ProductPriceManagement / api/ProductPriceManagement
+    {
+      "DownstreamPathTemplate": "/api/ProductPriceManagement",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "microservices-product.api",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/ProductPriceManagement",
+      "UpstreamHttpMethod": [ "POST" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    }
+
+  ]
+}

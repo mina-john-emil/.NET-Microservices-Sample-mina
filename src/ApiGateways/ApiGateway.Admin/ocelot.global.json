@@ -1,0 +1,5 @@
+{
+  "GlobalConfiguration": {
+    "BaseUrl": "http://microservices-apigateway.admin"
+  }
+}

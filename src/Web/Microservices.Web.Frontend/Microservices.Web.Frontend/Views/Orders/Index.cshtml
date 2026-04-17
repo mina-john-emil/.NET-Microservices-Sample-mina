@@ -1,0 +1,57 @@
+﻿@model List<Microservices.Web.Frontend.Models.DTO.Order.OrderDTO>;
+@{
+    ViewData["Title"] = "Index";
+}
+
+<table class="table col-md-9">
+    <thead>
+        <tr>
+            <th>
+                <label>Date of Registration</label>
+            </th>
+            <th>
+                <label>Number of products</label>
+            </th>
+            <th>
+                <label>Total price</label>
+            </th>
+            <th>
+                <label>Paid?</label>
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.OrderPlaced)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.ItemCount)
+                    </td>
+                    <td>
+                        <b class="text-success"> @item.TotalPrice.ToString("n0")$</b>
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.OrderPaid)
+
+                        @if (item.OrderPaid == false)
+                        {
+                            <a asp-action="Pay" asp-controller="Orders" asp-route-OrderId="@item.OrderId" class="btn btn-info">
+                                <i class="fa fa-payment"> </i>
+                                Pay
+                            </a>
+                        }
+                    </td>
+                    <td class="row">
+                        <a class="" asp-action="Detail" asp-controller="Orders" asp-route-id="@item.OrderId">Details</a>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

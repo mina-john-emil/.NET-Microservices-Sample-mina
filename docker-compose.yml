@@ -1,0 +1,79 @@
+
+services:
+  orderdb:
+    image: mongo
+
+  mongoclient:
+    image: mongoclient/mongoclient
+    
+  redisdb:
+    image: redis
+
+  sqldata:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+
+  portainer:
+    image: portainer/portainer-ce
+
+  orderservice:
+    image: ${DOCKER_REGISTRY-microservices}/orderservice
+    build:
+      context: .
+      dockerfile: src/Services/Orders/OrderService/Dockerfile
+
+  basketservice:
+    image: ${DOCKER_REGISTRY-microservices}/basketservice
+    build:
+      context: .
+      dockerfile: src/Services/Baskets/BasketService/Dockerfile
+
+  discountservice:
+    image: ${DOCKER_REGISTRY-microservices}/discountservice
+    build:
+      context: .
+      dockerfile: src/Services/Discounts/DiscountService/Dockerfile
+
+  productservice:
+    image: ${DOCKER_REGISTRY-microservices}/productservice
+    build:
+      context: .
+      dockerfile: src/Services/Products/ProductService/Dockerfile
+
+  paymentservice.endpoint:
+    image: ${DOCKER_REGISTRY-microservices}/paymentserviceendpoint
+    build:
+      context: .
+      dockerfile: src/Services/Payments/Presentation/PaymentService.EndPoint/Dockerfile
+
+  identityservice:
+    image: ${DOCKER_REGISTRY-microservices}/identityservice
+    build:
+      context: .
+      dockerfile: src/Identity/IdentityService/Dockerfile
+
+  apigateway.admin:
+    image: ${DOCKER_REGISTRY-microservices}/apigatewayadmin
+    build:
+      context: .
+      dockerfile: src/ApiGateways/ApiGateway.Admin/Dockerfile
+
+  apigateway.forweb:
+    image: ${DOCKER_REGISTRY-microservices}/apigatewayforweb
+    build:
+      context: .
+      dockerfile: src/ApiGateways/ApiGatewayForWeb/Dockerfile
+
+  microservices.admin.frontend:
+    image: ${DOCKER_REGISTRY-microservices}/microservicesadminfrontend
+    build:
+      context: .
+      dockerfile: src/Web/Microservices.Admin.Frontend/Dockerfile
+
+  microservices.web.frontend:
+    image: ${DOCKER_REGISTRY-microservices}/microserviceswebfrontend
+    build:
+      context: .
+      dockerfile: src/Web/Microservices.Web.Frontend/Microservices.Web.Frontend/Dockerfile
