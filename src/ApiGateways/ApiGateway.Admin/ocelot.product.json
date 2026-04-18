@@ -6,7 +6,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "microservices-product.api",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -22,7 +22,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "microservices-product.api",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -39,7 +39,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "microservices-product.api",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
