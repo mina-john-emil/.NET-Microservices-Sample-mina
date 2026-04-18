@@ -17,7 +17,6 @@ spec:
       containers:
         - name: apigatewayforweb
           image: microservices/apigatewayforweb
-          # image: mkhalesiir/microservicesapigatewayforweb:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
