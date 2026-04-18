@@ -17,7 +17,6 @@ spec:
       containers:
         - name: basketservice
           image: microservices/basketservice
-          # image: mkhalesiir/microservicesbasketservice:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
