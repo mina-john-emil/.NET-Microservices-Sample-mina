@@ -5,8 +5,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31605
+          "Host": "basketservice",
+          "Port": 80
         }
       ],
       "UpstreamPathTemplate": "/api/Basket?userId={userId}",
@@ -20,8 +20,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31605
+          "Host": "basketservice",
+          "Port": 80
         }
       ],
 
@@ -36,8 +36,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31605
+          "Host": "basketservice",
+          "Port": 80
         }
       ],
 
@@ -52,8 +52,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31605
+          "Host": "basketservice",
+          "Port": 80
         }
       ],
       "UpstreamPathTemplate": "/api/Basket?userId={userId}",
@@ -67,8 +67,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31605
+          "Host": "basketservice",
+          "Port": 80
         }
       ],
       "UpstreamPathTemplate": "/api/Basket/{basketId}/{discountId}/{userId}",
@@ -82,8 +82,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31605
+          "Host": "basketservice",
+          "Port": 80
         }
       ],
       "UpstreamPathTemplate": "/api/Basket/CheckoutBasket",
