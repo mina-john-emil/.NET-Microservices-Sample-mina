@@ -17,7 +17,6 @@ spec:
       containers:
         - name: apigatewayadmin
           image: microservices/apigatewayadmin
-          # image: mkhalesiir/microservicesapigatewayadmin:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
