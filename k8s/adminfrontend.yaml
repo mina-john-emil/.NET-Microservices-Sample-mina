@@ -17,7 +17,6 @@ spec:
       containers:
         - name: adminfrontend
           image: microservices/microservicesadminfrontend
-          # image: mkhalesiir/microserviceadminfrontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
