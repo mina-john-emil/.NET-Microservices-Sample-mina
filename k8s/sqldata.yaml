@@ -1,10 +1,11 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: StatefulSet                 # changed from Deployment
 metadata:
   name: sqldata-deployment
   labels:
     app: sqldata
 spec:
+  serviceName: sqldata-clusterip-srv  # links to service
   replicas: 1
   selector:
     matchLabels:
@@ -18,56 +19,32 @@ spec:
         - name: sqldata
           image: mcr.microsoft.com/mssql/server:2019-latest
           ports:
-            - containerPort: 1434
-          # resources:
-          #   requests:
-          #     memory: "64Mi"
-          #     cpu: "250m"
-          #   limits:
-          #     memory: "128Mi"
-          #     cpu: "500m"
+            - containerPort: 1433
           env:
             - name: ACCEPT_EULA
               value: "Y"
-            # - name: sqldata-secret
-            #   value: MTIzMzIxQWFA
             - name: MSSQL_SA_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: sqldata-secret
-                  key: MSSQL_SA_PASSWORD
+                  key: sa-password
           volumeMounts:
-          - mountPath: /var/opt/mssql
-            name: sqldatadb
+            - name: sqldata-storage
+              mountPath: /var/opt/mssql
       volumes:
-      - name: sqldatadb
-        persistentVolumeClaim:
-          claimName: sqldata-claim
-            
+        - name: sqldata-storage
+          persistentVolumeClaim:
+            claimName: sqldata-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: sqldata-clusterip-service
+  name: sqldata-clusterip-srv
 spec:
   type: ClusterIP
   selector:
     app: sqldata
   ports:
-  - name: sqldata
-    protocol: TCP
-    port: 1434
-    targetPort: 1433
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: sqldata-loadbalancer-service
-spec:
-  type: LoadBalancer
-  selector:
-    app: sqldata
-  ports:
-  - protocol: TCP
-    port: 1434
-    targetPort: 1433
+    - protocol: TCP
+      port: 1433
+      targetPort: 1433

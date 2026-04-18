@@ -5,6 +5,7 @@ metadata:
   labels:
     app: rabbitmq
 spec:
+  serviceName: rabbitmq-clusterip-srv
   replicas: 1
   selector:
     matchLabels:
@@ -17,48 +18,50 @@ spec:
       containers:
         - name: rabbitmq
           image: rabbitmq:3-management-alpine
+          # 3-management-alpine = lightweight image
+          # with management UI included
           ports:
-          - name: http
-            protocol: TCP
-            containerPort: 15672
-          - name: amqp
-            protocol: TCP
-            containerPort: 5672
+            - containerPort: 5672    # messaging port
+            - containerPort: 15672   # management UI port
+          volumeMounts:
+            - name: rabbitmq-storage
+              mountPath: /var/lib/rabbitmq  # where RabbitMQ stores data
+      volumes:
+        - name: rabbitmq-storage
+          persistentVolumeClaim:
+            claimName: rabbitmq-pvc
 ---
+# ── ClusterIP — for microservices messaging ──
 apiVersion: v1
 kind: Service
 metadata:
-  name: rabbitmq-clusterip-service
+  name: rabbitmq-clusterip-srv
 spec:
   type: ClusterIP
   selector:
     app: rabbitmq
   ports:
-   - name: http
-     protocol: TCP
-     port: 15672
-     targetPort: 15672
-   - name: amqp
-     protocol: TCP
-     port: 5672
-     targetPort: 5672
+    - name: messaging              # name needed when service has multiple ports
+      protocol: TCP
+      port: 5672
+      targetPort: 5672
+    - name: management             # second port on same service
+      protocol: TCP
+      port: 15672
+      targetPort: 15672
 ---
+# ── NodePort — to access management UI from browser ──
 apiVersion: v1
 kind: Service
 metadata:
-  name: rabbitmq-loadbalancer-service
+  name: rabbitmq-nodeport-srv
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: rabbitmq
   ports:
-   - name: http
-     protocol: TCP
-     port: 15672
-     targetPort: 15672
-     nodePort: 31672
-   - name: amqp
-     protocol: TCP
-     port: 5672
-     targetPort: 5672
-     nodePort: 30672
+    - name: management
+      protocol: TCP
+      port: 15672
+      targetPort: 15672
+      nodePort: 31672       # access from browser: http://nodeIP:31672

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservices-config      # name other files reference
+data:
+  # ── Environment ──────────────────────────────
+  ASPNETCORE_ENVIRONMENT: Production
+
+  # ── Identity Service URL ──────────────────────
+  # replaces hardcoded 192.168.150.131:7018
+  # this is the K8s service name we'll create in Step 8
+  Identity__Uri: "http://identityservice-clusterip-srv"
+
+  # ── RabbitMQ ──────────────────────────────────
+  # "rabbitmq-clusterip-srv" = K8s service name we'll create in Step 7
+  RabbitMq__Uri: "amqp://guest:guest@rabbitmq-clusterip-srv:5672"
+  RabbitMq__HostName: "rabbitmq-clusterip-srv"
+
+  # ── MongoDB ───────────────────────────────────
+  # "mongo-clusterip-srv" = K8s service name we'll create in Step 4
+  DatabaseSettings__DatabaseName: "MicroserviceOrderDB"
+
+  # ── Redis ─────────────────────────────────────
+  # "redis-clusterip-srv" = K8s service name we'll create in Step 6
+  CacheSettings__ConnectionString: "redis-clusterip-srv"
+
+  # ── Microservice URLs (inter-service calls) ───
+  MicroServiceAddress__Product__Uri: "http://productservice-clusterip-srv"
+  MicroServiceAddress__Discount__Uri: "http://discountservice-clusterip-srv"
+  MicroServiceAddress__DiscountGrpc__Uri: "http://discountservice-clusterip-srv:81"
+  MicroServiceAddress__AdminApiGateway__Uri: "http://apigatewayadmin-clusterip-srv"
+  MicroserviceAddress__ApiGatewayForWeb__Uri: "http://apigatewayforweb-clusterip-srv"
