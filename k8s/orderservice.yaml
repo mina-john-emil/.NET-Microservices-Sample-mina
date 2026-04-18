@@ -17,7 +17,6 @@ spec:
       containers:
         - name: orderservice
           image: microservices/orderservice
-          # image: mkhalesiir/microservicesorderservice:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
