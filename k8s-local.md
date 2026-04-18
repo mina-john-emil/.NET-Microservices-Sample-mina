@@ -1,6 +1,7 @@
 ```bash
 chmod +x CorrectForLocalK8s.sh
 ./CorrectForLocalK8s.sh
+docker system prune -a --volumes
 docker compose build
 chmod +x kind-load.sh
 ./kind-load.sh
