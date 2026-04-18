@@ -21,5 +21,45 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
+
+# Security: Exclude all signing keys and secrets
+**/*.jwk
+**/*.pfx
+**/*.snk
+**/*.p12
+**/keys/
+**/secrets/
+.env
+*.user
+
+# Deployment: Exclude orchestration folders (not needed inside the container)
+k8s/
+helm/
+argocd/
+CorrectForLocalK8s.sh
+docker-compose*
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+
+# Build Artifacts: Avoid copying local builds into the container
+**/.vs/
+**/.vscode/
+**/bin/
+**/obj/
+**/out/
+**/publish/
+
+# Version Control & OS files
+.git/
+.gitignore
+.dockerignore
+**/*.swp
+.DS_Store
+Thumbs.db
+
+# Frontend (if applicable)
+**/node_modules/
+**/dist/
 LICENSE
 README.md
