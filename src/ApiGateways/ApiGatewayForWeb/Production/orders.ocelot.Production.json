@@ -8,8 +8,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31705
+          "Host": "orderservice",
+          "Port": 80
         }
       ],
       "AuthenticationOptions": {
