@@ -6,8 +6,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31114
+          "Host": "productservice",
+          "Port": 80
         }
       ],
       // This information is provided to the subordinate
@@ -38,8 +38,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31114
+          "Host": "productservice",
+          "Port": 80
         }
       ],
 
@@ -56,8 +56,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31114
+          "Host": "productservice",
+          "Port": 80
         }
       ],
       "UpstreamPathTemplate": "/api/Category",
@@ -71,8 +71,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31114
+          "Host": "productservice",
+          "Port": 80
         }
       ],
       "UpstreamPathTemplate": "/api/ProductManagement",
@@ -86,8 +86,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31114
+          "Host": "productservice",
+          "Port": 80
         }
       ],
       "UpstreamPathTemplate": "/api/ProductManagement/{Id}",
@@ -102,8 +102,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "kubernetes.docker.internal",
-          "Port": 31114
+          "Host": "productservice",
+          "Port": 80
         }
       ],
       "UpstreamPathTemplate": "/api/ProductPriceManagement",
