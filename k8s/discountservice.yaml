@@ -17,7 +17,6 @@ spec:
       containers:
         - name: discountservice
           image: microservices/discountservice
-          # image: mkhalesiir/discountservice:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
