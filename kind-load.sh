@@ -1,0 +1,10 @@
+kind load docker-image --name dev-cluster microservices/microservicesadminfrontend:latest
+kind load docker-image --name dev-cluster microservices/apigatewayadmin:latest
+kind load docker-image --name dev-cluster microservices/apigatewayforweb:latest
+kind load docker-image --name dev-cluster microservices/basketservice:latest
+kind load docker-image --name dev-cluster microservices/discountservice:latest
+kind load docker-image --name dev-cluster microservices/identityservice:latest
+kind load docker-image --name dev-cluster microservices/orderservice:latest
+kind load docker-image --name dev-cluster microservices/paymentserviceendpoint:latest
+kind load docker-image --name dev-cluster microservices/productservice:latest
+kind load docker-image --name dev-cluster microservices/microserviceswebfrontend:latest
