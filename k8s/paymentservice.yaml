@@ -17,7 +17,6 @@ spec:
       containers:
         - name: paymentservice
           image: microservices/paymentserviceendpoint
-          # image: mkhalesiir/microservicespaymentservice:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
