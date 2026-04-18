@@ -6,6 +6,11 @@ services:
       - "27017:27017"
     volumes:
       - microservice-mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongoclient:
     container_name: mongoclient
@@ -19,6 +24,11 @@ services:
       - "6379:6379"
     volumes:
       - microservice-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   sqldata:
     container_name: sqldata
@@ -30,12 +40,24 @@ services:
       - MSSQL_SA_PASSWORD=123321Aa@
     volumes:
       - microservice-sqldata:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P '123321Aa@' -Q 'SELECT 1' || exit 1
+      interval: 20s
+      timeout: 10s
+      retries: 5
 
   rabbitmq:
     container_name: rabbitmq
     ports:
       - "15672:15672"
       - "5672:5672"
+    volumes:
+      - microservice-rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
 
   portainer:
     container_name: portainer
@@ -53,10 +75,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - OrderConnection=Server=sqldata;Database=MicroserviceOrderDB;User Id=sa;password=123321Aa@;Encrypt=False;TrustServerCertificate=true;
-      - DatabaseSettings__ConnectionString=mongodb://orderdb:27017
+      - DatabaseSettings__ConnectionString=mongodb://admin:password@orderdb:27017
       - DatabaseSettings__DatabaseName=MicroserviceOrderDB
       - MicroServiceAddress__Product__Uri=http://productservice
-      - Identity__Uri=http://192.168.150.131:7018
+      - Identity__Uri=http://identityservice
       - RabbitMq__Uri=amqp://guest:guest@rabbitmq:5672
       - RabbitMq__HostName=rabbitmq
     ports:
@@ -72,11 +94,11 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - BasketConnection=Server=sqldata;Database=MicroserviceBasketDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
-      - CacheSettings__ConnectionString=redisdb
+      - CacheSettings__ConnectionString=redisdb:6379
       - RabbitMq__Uri=amqp://guest:guest@rabbitmq:5672
       - MicroServiceAddress__Discount__Uri=http://discountservice
       - MicroServiceAddress__DiscountGrpc__Uri=http://discountservice:81
-      - Identity__Uri=http://192.168.150.131:7018
+      - Identity__Uri=http://identityservice
     ports:
       - "6002:80"
     depends_on:
@@ -104,7 +126,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - ProductConnection=Server=sqldata;Database=MicroserviceProductDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
-      - Identity__Uri=http://192.168.150.131:7018
+      - Identity__Uri=http://identityservice
     ports:
       - "11002:80"
     depends_on:
@@ -117,7 +139,7 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - PaymentConnection=Server=sqldata;Database=MicroservicePaymentDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
       - RabbitMq__Uri=amqp://guest:guest@rabbitmq:5672
-      - Identity__Uri=http://192.168.150.131:7018
+      - Identity__Uri=http://identityservice
     ports:
       - "10002:80"
     depends_on:
@@ -130,8 +152,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - AspIdentityConnection=Server=sqldata;Database=MicroserviceAspIdentityDB;User Id=SA;password=123321Aa@;Encrypt=False;TrustServerCertificate=true
-      - WebFrontend__Uri=http://192.168.150.131:44328
-      - AdminFrontend__Uri=http://192.168.150.131:7298
+      - WebFrontend__Uri=http://microservices.web.frontend
+      - AdminFrontend__Uri=http://microservices.admin.frontend
     ports:
       - "7018:80"
     depends_on:
@@ -142,7 +164,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
-      - Identity__Uri=http://192.168.150.131:7018
+      - Identity__Uri=http://identityservice
     ports:
       - "11023:80"
     depends_on:
@@ -153,7 +175,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
-      - Identity__Uri=http://192.168.150.131:7018
+      - Identity__Uri=http://identityservice
       - MicroserviceAddress__Discount__Uri=http://discountservice
       - MicroserviceAddress__DiscountGrpc__Uri=http://discountservice:81
     ports:
@@ -166,8 +188,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
-      - Identity__Uri=http://192.168.150.131:7018
-      - MicroserviceAddress__AdminApiGateway__Uri=http://192.168.150.131:11023
+      - Identity__Uri=http://identityservice
+      - MicroserviceAddress__AdminApiGateway__Uri=http://apigateway.admin
     ports:
       - "7298:80"
     depends_on:
@@ -178,8 +200,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
-      - MicroserviceAddress__ApiGatewayForWeb__Uri=http://192.168.150.131:10023
-      - Identity__Uri=http://192.168.150.131:7018
+      - MicroserviceAddress__ApiGatewayForWeb__Uri=http://apigateway.forweb
+      - Identity__Uri=http://identityservice
     ports:
       - "44328:80"
     depends_on:
@@ -189,4 +211,5 @@ volumes:
   microservice-sqldata:
   microservice-mongodata:
   microservice-redisdata:
+  microservice-rabbitmqdata:
   portainer_data:
