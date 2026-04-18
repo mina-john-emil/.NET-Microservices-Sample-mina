@@ -1,5 +1,5 @@
 {
   "GlobalConfiguration": {
-    "BaseUrl": "http://microservices-apigateway.admin"
+    "BaseUrl": "http://apigatewayadmin-clusterip-srv"
   }
 }
