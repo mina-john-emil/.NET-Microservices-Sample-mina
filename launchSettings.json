@@ -16,6 +16,8 @@
         "microservices.admin.frontend": "StartDebugging",
         "sqldata": "StartWithoutDebugging",
         "rabbitmq": "StartWithoutDebugging"
+        "orderdb": "StartWithoutDebugging",
+        "redisdb": "StartWithoutDebugging"
       }
     }
   }
