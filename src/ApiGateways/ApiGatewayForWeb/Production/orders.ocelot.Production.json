@@ -8,7 +8,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "orderservice",
+          "Host": "orderservice-clusterip-srv",
           "Port": 80
         }
       ],
