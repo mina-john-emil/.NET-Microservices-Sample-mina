@@ -6,7 +6,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "paymentservice",
+          "Host": "paymentservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -22,7 +22,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "paymentservice",
+          "Host": "paymentservice-clusterip-srv",
           "Port": 80
         }
       ],
