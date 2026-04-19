@@ -28,7 +28,6 @@
 
       "Key": "getproduct"
     },
-    //---------- category
     {
       "DownstreamPathTemplate": "/api/Category",
       "DownstreamScheme": "http",
