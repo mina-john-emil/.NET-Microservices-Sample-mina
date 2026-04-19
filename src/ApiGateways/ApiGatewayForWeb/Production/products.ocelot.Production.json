@@ -6,7 +6,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "productservice",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -38,7 +38,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "productservice",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -56,7 +56,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "productservice",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -71,7 +71,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "productservice",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -86,7 +86,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "productservice",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -102,7 +102,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "productservice",
+          "Host": "productservice-clusterip-srv",
           "Port": 80
         }
       ],
