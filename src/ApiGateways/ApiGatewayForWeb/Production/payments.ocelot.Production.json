@@ -1,6 +1,5 @@
 {
   "Routes": [
-    //Payment
     {
       "DownstreamPathTemplate": "/api/Pay?OrderId={OrderId}&callbackUrlFront={callbackUrlFront}",
       "DownstreamScheme": "http",
