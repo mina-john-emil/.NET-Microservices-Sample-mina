@@ -19,4 +19,5 @@ RUN dotnet publish "ApiGateway.ForWeb.csproj" -c Release -o /app/publish /p:UseA
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+USER app
 ENTRYPOINT ["dotnet", "ApiGateway.ForWeb.dll"]
