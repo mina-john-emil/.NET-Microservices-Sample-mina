@@ -39,9 +39,7 @@
       ],
       "UpstreamPathTemplate": "/api/Category",
       "UpstreamHttpMethod": [ "GET", "POST" ],
-      //"AuthenticationOptions": {
-      //  "AuthenticationProviderKey": "ApiGatewayForWebAuthenticationScheme"
-      //}
+
     },
     {
       "DownstreamPathTemplate": "/api/ProductManagement",
