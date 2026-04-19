@@ -1,6 +1,6 @@
 {
   "GlobalConfiguration": {
-    "BaseUrl": "http://apigatewayforweb-clusterip-srv",
+    "BaseUrl": "http://apigatewayforweb-clusterip-srv"
 
   }
 }
