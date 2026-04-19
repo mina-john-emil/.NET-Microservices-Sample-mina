@@ -1,6 +1,5 @@
 {
   "Routes": [
-    // ------------------- ProductManagement / api/ProductManagement
     {
       "DownstreamPathTemplate": "/api/ProductManagement",
       "DownstreamScheme": "http",
@@ -33,7 +32,6 @@
       }
     },
 
-    // ------------------- ProductPriceManagement / api/ProductPriceManagement
     {
       "DownstreamPathTemplate": "/api/ProductPriceManagement",
       "DownstreamScheme": "http",
