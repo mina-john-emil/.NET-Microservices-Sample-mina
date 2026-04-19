@@ -1,28 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: apigatewayforweb-deployment
+  name: webfrontend-deployment
   labels:
-    app: apigatewayforweb
+    app: webfrontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: apigatewayforweb
+      app: webfrontend
   template:
     metadata:
       labels:
-        app: apigatewayforweb
+        app: webfrontend
     spec:
       containers:
-        - name: apigatewayforweb
-          image: microservices/apigatewayforweb:latest
+        - name: webfrontend
+          image: microservices/microserviceswebfrontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           env:
             - name: ASPNETCORE_ENVIRONMENT
-              value: "Production"
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: ASPNETCORE_ENVIRONMENT
             - name: ASPNETCORE_URLS
               value: "http://+:8080"
             - name: Identity__Uri
@@ -30,16 +33,11 @@ spec:
                 configMapKeyRef:
                   name: microservices-config
                   key: Identity__Uri
-            - name: MicroserviceAddress__Discount__Uri
+            - name: MicroserviceAddress__ApiGatewayForWeb__Uri
               valueFrom:
                 configMapKeyRef:
                   name: microservices-config
-                  key: MicroServiceAddress__Discount__Uri
-            - name: MicroserviceAddress__DiscountGrpc__Uri
-              valueFrom:
-                configMapKeyRef:
-                  name: microservices-config
-                  key: MicroServiceAddress__DiscountGrpc__Uri
+                  key: MicroserviceAddress__ApiGatewayForWeb__Uri
           readinessProbe:
             tcpSocket:
               port: 808080
@@ -63,11 +61,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: apigatewayforweb-clusterip-srv
+  name: webfrontend-clusterip-srv
 spec:
   type: ClusterIP
   selector:
-    app: apigatewayforweb
+    app: webfrontend
   ports:
     - name: http
       protocol: TCP
@@ -77,14 +75,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: apigatewayforweb-nodeport-srv
+  name: webfrontend-nodeport-srv
 spec:
   type: NodePort
   selector:
-    app: apigatewayforweb
+    app: webfrontend
   ports:
     - name: http
       protocol: TCP
       port: 8080
       targetPort: 8080
-      nodePort: 30023
+      nodePort: 31443

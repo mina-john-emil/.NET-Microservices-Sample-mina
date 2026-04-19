@@ -20,7 +20,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
             - name: grpc
               containerPort: 81
           env:
@@ -36,27 +36,24 @@ spec:
                   key: sa-password
             - name: DiscountConnection
               value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceDiscountDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
-            # Kestrel dual-endpoint: port 80 for REST, port 81 for gRPC (HTTP/2)
             - name: Kestrel__Endpoints__HTTP__Url
-              value: "http://+:80"
+              value: "http://+:8080"
             - name: Kestrel__Endpoints__GRPC__Url
               value: "http://+:81"
             - name: Kestrel__Endpoints__GRPC__Protocols
               value: "Http2"
           readinessProbe:
-            httpGet:
-              path: /health
-              port: 80
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            failureThreshold: 5
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 80
+            tcpSocket:
+              port: 808080
             initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          livenessProbe:
+            tcpSocket:
+              port: 808080
+            initialDelaySeconds: 60
             periodSeconds: 20
-            failureThreshold: 3
+            failureThreshold: 5
           resources:
             requests:
               memory: "128Mi"
@@ -76,8 +73,8 @@ spec:
   ports:
     - name: http
       protocol: TCP
-      port: 80
-      targetPort: 80
+      port: 8080
+      targetPort: 8080
     - name: grpc
       protocol: TCP
       port: 81

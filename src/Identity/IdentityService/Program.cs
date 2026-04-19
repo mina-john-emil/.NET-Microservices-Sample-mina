@@ -14,13 +14,11 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>()
 builder.Services.AddRazorPages();
 
 IConfiguration configuration = builder.Configuration;
+
 builder.Services.AddDbContext<ApplicationDbContext>(option =>
     option.UseSqlServer(configuration["AspIdentityConnection"]));
 
-//options =>
-//{
-//    options.IssuerUri = "null";
-//}
+
 builder.Services.AddIdentityServer()
     .AddDeveloperSigningCredential()
     .AddInMemoryIdentityResources(new List<IdentityResource>()
@@ -126,8 +124,9 @@ builder.Services.AddIdentityServer()
             Description = "PaymentService",
             Scopes = { "PaymentService.FullAccess" }
         }
-    })
-    .AddAspNetIdentity<IdentityUser>();
+    }); // <<< THIS IS THE MISSING SEMICOLON
+
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -137,25 +136,22 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
     app.UseExceptionHandler("/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     //app.UseHsts();
-
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         db.Database.Migrate();
     }
-
     SeedUserData.Seed(app);
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // <<< THIS LINE IS NOW COMMENTED OUT
 app.UseStaticFiles();
-
 app.UseCookiePolicy(new CookiePolicyOptions { MinimumSameSitePolicy = SameSiteMode.Lax });
-
 app.UseRouting();
 app.UseIdentityServer();
 app.UseAuthorization();
-
 app.MapRazorPages();
+app.MapHealthChecks("/health");
 
 app.Run();
+

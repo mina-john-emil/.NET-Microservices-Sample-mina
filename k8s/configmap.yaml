@@ -9,7 +9,7 @@ data:
   # ── Identity Service URL ──────────────────────
   # replaces hardcoded 192.168.150.131:7018
   # this is the K8s service name we'll create in Step 8
-  Identity__Uri: "http://identityservice-clusterip-srv"
+  Identity__Uri: "http://identityservice-clusterip-srv:8080"
 
   # ── RabbitMQ ──────────────────────────────────
   # "rabbitmq-clusterip-srv" = K8s service name we'll create in Step 7
@@ -25,8 +25,8 @@ data:
   CacheSettings__ConnectionString: "redis-clusterip-srv"
 
   # ── Microservice URLs (inter-service calls) ───
-  MicroServiceAddress__Product__Uri: "http://productservice-clusterip-srv"
-  MicroServiceAddress__Discount__Uri: "http://discountservice-clusterip-srv"
+  MicroServiceAddress__Product__Uri: "http://productservice-clusterip-srv:8080"
+  MicroServiceAddress__Discount__Uri: "http://discountservice-clusterip-srv:8080"
   MicroServiceAddress__DiscountGrpc__Uri: "http://discountservice-clusterip-srv:81"
-  MicroServiceAddress__AdminApiGateway__Uri: "http://apigatewayadmin-clusterip-srv"
-  MicroserviceAddress__ApiGatewayForWeb__Uri: "http://apigatewayforweb-clusterip-srv"
+  MicroServiceAddress__AdminApiGateway__Uri: "http://apigatewayadmin-clusterip-srv:8080"
+  MicroserviceAddress__ApiGatewayForWeb__Uri: "http://apigatewayforweb-clusterip-srv:8080"
