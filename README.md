@@ -214,8 +214,8 @@ Deploying .Net Microservices into <h>Kubernetes</b> and moving deployments to th
   </li>
 </ul>
 
-<h2>Apply Kubernetes clusters with command: </h2>
-<pre>kubectl apply /k8s</pre>
+<h2>Apply helm with command: </h2>
+<pre>helm install microservices helm/microservices/</pre>
 <p>
   <blockquote>
     you can find Port or NodePort of services in k8s yaml files
@@ -225,9 +225,4 @@ Deploying .Net Microservices into <h>Kubernetes</b> and moving deployments to th
 
 <hr>
 
-# Authors
-<ul>
-  <li>
-    Mohammad Khalesi - <a href="https://github.com/mkhalesi">Mkhalesi</a>
-  </li>
-</ul>
+
