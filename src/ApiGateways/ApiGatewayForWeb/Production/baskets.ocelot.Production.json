@@ -5,7 +5,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "basketservice",
+          "Host": "basketservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -20,7 +20,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "basketservice",
+          "Host": "basketservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -36,7 +36,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "basketservice",
+          "Host": "basketservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -52,7 +52,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "basketservice",
+          "Host": "basketservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -67,7 +67,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "basketservice",
+          "Host": "basketservice-clusterip-srv",
           "Port": 80
         }
       ],
@@ -82,7 +82,7 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "basketservice",
+          "Host": "basketservice-clusterip-srv",
           "Port": 80
         }
       ],
