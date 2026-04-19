@@ -19,4 +19,5 @@ RUN dotnet publish "IdentityService.csproj" -c Release -o /app/publish /p:UseApp
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+USER app
 ENTRYPOINT ["dotnet", "IdentityService.dll"]
