@@ -1,0 +1,6 @@
+apiVersion: v2          # Helm 3 uses v2
+name: microservices     # chart name — used in helm commands
+description: .NET 8 Microservices Helm Chart
+type: application       # application = deployable, library = reusable helpers
+version: 1.0.0          # chart version — increment when you change the chart
+appVersion: "1.0.0"     # your app version — shown in kubectl labels

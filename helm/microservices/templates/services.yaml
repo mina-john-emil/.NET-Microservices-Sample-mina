@@ -1,0 +1,760 @@
+# ── Identity Service ──────────────────────────────────────────────
+# All other services depend on this — it handles authentication
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identityservice-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: identityservice
+  template:
+    metadata:
+      labels:
+        app: identityservice
+    spec:
+      containers:
+        - name: identityservice
+          # {{ .Values.global.registry }}/identityservice:{{ .Values.global.imageTag }}
+          # = microservices/identityservice:latest
+          image: "{{ .Values.global.registry }}/identityservice:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.global.appPort }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.global.appPort }}"
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+            - name: AspIdentityConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceAspIdentityDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            # WebFrontend/AdminFrontend use real VM IP so browser redirect works
+            - name: WebFrontend__Uri
+              value: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.webfrontend }}"
+            - name: AdminFrontend__Uri
+              value: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.adminfrontend }}"
+          {{- include "ms.readinessProbe" . | nindent 10 }}
+          {{- include "ms.livenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.medium | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identityservice-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: identityservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identityservice-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: identityservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+      nodePort: {{ .Values.nodePorts.identity }}
+---
+# ── Product Service ───────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: productservice-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: productservice
+  template:
+    metadata:
+      labels:
+        app: productservice
+    spec:
+      containers:
+        - name: productservice
+          image: "{{ .Values.global.registry }}/productservice:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.global.appPort }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.global.appPort }}"
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+            - name: ProductConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceProductDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+            - name: RabbitMq__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__Uri
+            - name: RabbitMq__HostName
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__HostName
+          {{- include "ms.readinessProbe" . | nindent 10 }}
+          {{- include "ms.livenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.medium | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: productservice-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: productservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: productservice-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: productservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+      nodePort: {{ .Values.nodePorts.productservice }}
+---
+# ── Discount Service ──────────────────────────────────────────────
+# Special: has TWO ports — 8080 for REST, 81 for gRPC
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discountservice-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discountservice
+  template:
+    metadata:
+      labels:
+        app: discountservice
+    spec:
+      containers:
+        - name: discountservice
+          image: "{{ .Values.global.registry }}/discountservice:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.global.appPort }}
+            - name: grpc
+              containerPort: 81
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+            - name: DiscountConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceDiscountDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            # Kestrel serves HTTP on 8080 and gRPC on 81 simultaneously
+            - name: Kestrel__Endpoints__HTTP__Url
+              value: "http://+:{{ .Values.global.appPort }}"
+            - name: Kestrel__Endpoints__GRPC__Url
+              value: "http://+:81"
+            - name: Kestrel__Endpoints__GRPC__Protocols
+              value: "Http2"
+          {{- include "ms.readinessProbe" . | nindent 10 }}
+          {{- include "ms.livenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.medium | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discountservice-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: discountservice
+  ports:
+    - name: http
+      port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+    - name: grpc
+      port: 81
+      targetPort: 81
+---
+# ── Basket Service ────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: basketservice-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: basketservice
+  template:
+    metadata:
+      labels:
+        app: basketservice
+    spec:
+      containers:
+        - name: basketservice
+          image: "{{ .Values.global.registry }}/basketservice:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.global.appPort }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.global.appPort }}"
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+            - name: BasketConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceBasketDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            - name: CacheSettings__ConnectionString
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: CacheSettings__ConnectionString
+            - name: RabbitMq__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__Uri
+            - name: RabbitMq__HostName
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__HostName
+            - name: MicroServiceAddress__Discount__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__Discount__Uri
+            - name: MicroServiceAddress__DiscountGrpc__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__DiscountGrpc__Uri
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+          {{- include "ms.readinessProbe" . | nindent 10 }}
+          {{- include "ms.livenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.medium | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: basketservice-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: basketservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: basketservice-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: basketservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+      nodePort: {{ .Values.nodePorts.basketservice }}
+---
+# ── Order Service ─────────────────────────────────────────────────
+# Special: connects to BOTH SQL Server AND MongoDB
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orderservice-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orderservice
+  template:
+    metadata:
+      labels:
+        app: orderservice
+    spec:
+      containers:
+        - name: orderservice
+          image: "{{ .Values.global.registry }}/orderservice:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.global.appPort }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.global.appPort }}"
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+            - name: OrderConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceOrderDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            # MongoDB connection — uses helper function that URL-encodes the @ in password
+            - name: DatabaseSettings__ConnectionString
+              value: {{ include "ms.mongoconn" . | quote }}
+            - name: DatabaseSettings__DatabaseName
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: DatabaseSettings__DatabaseName
+            - name: RabbitMq__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__Uri
+            - name: RabbitMq__HostName
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__HostName
+            - name: MicroServiceAddress__Product__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__Product__Uri
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+          {{- include "ms.readinessProbe" . | nindent 10 }}
+          {{- include "ms.livenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.medium | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderservice-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: orderservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderservice-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: orderservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+      nodePort: {{ .Values.nodePorts.orderservice }}
+---
+# ── Payment Service ───────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paymentservice-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paymentservice
+  template:
+    metadata:
+      labels:
+        app: paymentservice
+    spec:
+      containers:
+        - name: paymentservice
+          # NOTE: image name is paymentserviceendpoint not paymentservice
+          image: "{{ .Values.global.registry }}/paymentserviceendpoint:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.global.appPort }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.global.appPort }}"
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+            - name: PaymentConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroservicePaymentDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            - name: RabbitMq__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__Uri
+            - name: RabbitMq__HostName
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__HostName
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+          {{- include "ms.readinessProbe" . | nindent 10 }}
+          {{- include "ms.livenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.medium | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paymentservice-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: paymentservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paymentservice-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: paymentservice
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+      nodePort: {{ .Values.nodePorts.paymentservice }}
+---
+# ── API Gateway Admin ─────────────────────────────────────────────
+# Routes admin requests to productservice
+# MUST use Production env so Ocelot loads ocelot.product.json
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apigatewayadmin-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apigatewayadmin
+  template:
+    metadata:
+      labels:
+        app: apigatewayadmin
+    spec:
+      containers:
+        - name: apigatewayadmin
+          image: "{{ .Values.global.registry }}/apigatewayadmin:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.global.appPort }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.global.appPort }}"
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+          {{- include "ms.readinessProbe" . | nindent 10 }}
+          {{- include "ms.livenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.small | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigatewayadmin-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: apigatewayadmin
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigatewayadmin-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: apigatewayadmin
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+      nodePort: {{ .Values.nodePorts.apigatewayadmin }}
+---
+# ── API Gateway ForWeb ────────────────────────────────────────────
+# Routes web requests to basket, order, product, payment services
+# MUST use Production env so Ocelot loads Production/*.ocelot.Production.json
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apigatewayforweb-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apigatewayforweb
+  template:
+    metadata:
+      labels:
+        app: apigatewayforweb
+    spec:
+      containers:
+        - name: apigatewayforweb
+          image: "{{ .Values.global.registry }}/apigatewayforweb:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.global.appPort }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: ASPNETCORE_URLS
+              value: "http://+:{{ .Values.global.appPort }}"
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+            - name: MicroserviceAddress__Discount__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__Discount__Uri
+            - name: MicroserviceAddress__DiscountGrpc__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__DiscountGrpc__Uri
+          {{- include "ms.readinessProbe" . | nindent 10 }}
+          {{- include "ms.livenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.small | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigatewayforweb-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: apigatewayforweb
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigatewayforweb-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: apigatewayforweb
+  ports:
+    - port: {{ .Values.global.appPort }}
+      targetPort: {{ .Values.global.appPort }}
+      nodePort: {{ .Values.nodePorts.apigatewayforweb }}
+---
+# ── Admin Frontend ────────────────────────────────────────────────
+# Listens on port 80 (not 8080) — uses frontendProbe helpers
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adminfrontend-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adminfrontend
+  template:
+    metadata:
+      labels:
+        app: adminfrontend
+    spec:
+      containers:
+        - name: adminfrontend
+          image: "{{ .Values.global.registry }}/microservicesadminfrontend:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: 80
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+            - name: MicroserviceAddress__AdminApiGateway__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__AdminApiGateway__Uri
+          {{- include "ms.frontendReadinessProbe" . | nindent 10 }}
+          {{- include "ms.frontendLivenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.small | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adminfrontend-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: adminfrontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adminfrontend-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: adminfrontend
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: {{ .Values.nodePorts.adminfrontend }}
+---
+# ── Web Frontend ──────────────────────────────────────────────────
+# Listens on port 80 (not 8080) — uses frontendProbe helpers
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webfrontend-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webfrontend
+  template:
+    metadata:
+      labels:
+        app: webfrontend
+    spec:
+      containers:
+        - name: webfrontend
+          image: "{{ .Values.global.registry }}/microserviceswebfrontend:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: 80
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | quote }}
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+            - name: MicroserviceAddress__ApiGatewayForWeb__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroserviceAddress__ApiGatewayForWeb__Uri
+          {{- include "ms.frontendReadinessProbe" . | nindent 10 }}
+          {{- include "ms.frontendLivenessProbe" . | nindent 10 }}
+          resources: {{- toYaml .Values.resources.small | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webfrontend-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: webfrontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webfrontend-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: webfrontend
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: {{ .Values.nodePorts.webfrontend }}

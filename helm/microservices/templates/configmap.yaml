@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservices-config
+  labels: {{- include "ms.labels" . | nindent 4 }}
+data:
+  # {{ .Values.global.environment }} = "Production" from values.yaml
+  ASPNETCORE_ENVIRONMENT: {{ .Values.global.environment | quote }}
+
+  # Identity URL uses real VM IP so browser redirects work
+  # {{ .Values.global.vmIP }} = "192.168.150.131"
+  # {{ .Values.nodePorts.identity }} = 31720
+  Identity__Uri: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.identity }}"
+
+  # RabbitMQ — internal K8s service name (pod-to-pod, not browser)
+  RabbitMq__Uri: "amqp://guest:guest@rabbitmq-clusterip-srv:5672"
+  RabbitMq__HostName: "rabbitmq-clusterip-srv"
+
+  # MongoDB database name for orderservice
+  DatabaseSettings__DatabaseName: "MicroserviceOrderDB"
+
+  # Redis — internal service name for basketservice cache
+  CacheSettings__ConnectionString: "redis-clusterip-srv"
+
+  # Inter-service URLs — pod-to-pod communication uses K8s service names
+  MicroServiceAddress__Product__Uri: "http://productservice-clusterip-srv:{{ .Values.global.appPort }}"
+  MicroServiceAddress__Discount__Uri: "http://discountservice-clusterip-srv:{{ .Values.global.appPort }}"
+  MicroServiceAddress__DiscountGrpc__Uri: "http://discountservice-clusterip-srv:81"
+  MicroServiceAddress__AdminApiGateway__Uri: "http://apigatewayadmin-clusterip-srv:{{ .Values.global.appPort }}"
+  MicroserviceAddress__ApiGatewayForWeb__Uri: "http://apigatewayforweb-clusterip-srv:{{ .Values.global.appPort }}"

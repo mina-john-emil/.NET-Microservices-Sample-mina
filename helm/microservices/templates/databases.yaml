@@ -1,0 +1,219 @@
+# ── MongoDB ───────────────────────────────────────────────────────
+# StatefulSet gives stable pod name (mongo-deployment-0)
+# so same PVC is always reattached after restart
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  serviceName: mongo-clusterip-srv   # links to headless service for stable DNS
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:latest
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: 27017
+          env:
+            # Read credentials from mongo-secret
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: mongo-root-username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: mongo-root-password
+          volumeMounts:
+            - name: mongo-storage
+              mountPath: /data/db    # where MongoDB stores data
+      volumes:
+        - name: mongo-storage
+          persistentVolumeClaim:
+            claimName: mongo-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP    # only reachable inside cluster
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+# ── SQL Server ────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sqldata-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  serviceName: sqldata-clusterip-srv
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sqldata
+  template:
+    metadata:
+      labels:
+        app: sqldata
+    spec:
+      containers:
+        - name: sqldata
+          image: mcr.microsoft.com/mssql/server:2019-latest
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: 1433
+          env:
+            - name: ACCEPT_EULA      # required by Microsoft license
+              value: "Y"
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+          volumeMounts:
+            - name: sqldata-storage
+              mountPath: /var/opt/mssql
+      volumes:
+        - name: sqldata-storage
+          persistentVolumeClaim:
+            claimName: sqldata-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqldata-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: sqldata
+  ports:
+    - port: 1433
+      targetPort: 1433
+---
+# ── Redis ─────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  serviceName: redis-clusterip-srv
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:latest
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-storage
+              mountPath: /data
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+# ── RabbitMQ ──────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq-deployment
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  serviceName: rabbitmq-clusterip-srv
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3-management-alpine
+          imagePullPolicy: {{ .Values.global.pullPolicy }}
+          ports:
+            - containerPort: 5672    # messaging port
+            - containerPort: 15672   # web UI port
+          volumeMounts:
+            - name: rabbitmq-storage
+              mountPath: /var/lib/rabbitmq
+      volumes:
+        - name: rabbitmq-storage
+          persistentVolumeClaim:
+            claimName: rabbitmq-pvc
+---
+# ClusterIP — microservices connect here for messaging
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-clusterip-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: management
+      port: 15672
+      targetPort: 15672
+---
+# NodePort — access RabbitMQ UI from browser
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-nodeport-srv
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: rabbitmq
+  ports:
+    - name: management
+      port: 15672
+      targetPort: 15672
+      nodePort: {{ .Values.nodePorts.rabbitmqUI }}

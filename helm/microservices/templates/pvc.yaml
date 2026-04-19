@@ -1,0 +1,45 @@
+# PVCs — persistent storage for databases
+# Without PVC: all data lost when pod restarts
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-pvc
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]   # one pod reads/writes at a time
+  resources:
+    requests:
+      storage: {{ .Values.storage.mongo }}   # "1Gi" from values.yaml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sqldata-pvc
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.storage.sqldata }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.storage.redis }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-pvc
+  labels: {{- include "ms.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.storage.rabbitmq }}

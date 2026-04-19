@@ -1,0 +1,65 @@
+# ── Global settings shared by ALL services ──────────────────────
+global:
+  registry: microservices      # Docker image prefix: microservices/orderservice
+  imageTag: latest             # Docker image tag — change to v2 to upgrade all
+  pullPolicy: IfNotPresent     # Don't pull if image already exists on node
+  environment: Production      # ASPNETCORE_ENVIRONMENT value
+  appPort: 8080                # Port .NET services listen on (identityservice=8080)
+  vmIP: "192.168.150.131"      # Your VM IP — used for Identity redirect URLs
+
+# ── Credentials stored here, base64-encoded in secrets.yaml ─────
+secrets:
+  mongo:
+    username: admin
+    password: "123321Aa@"      # @ will be URL-encoded to %40 in connection string
+  sql:
+    saPassword: "123321Aa@"
+
+# ── PVC storage sizes ────────────────────────────────────────────
+storage:
+  mongo: 1Gi
+  sqldata: 2Gi
+  redis: 512Mi
+  rabbitmq: 512Mi
+
+# ── NodePorts — ports you open in browser ────────────────────────
+nodePorts:
+  identity: 31720              # http://192.168.150.131:31720
+  webfrontend: 31443           # http://192.168.150.131:31443
+  adminfrontend: 31298         # http://192.168.150.131:31298
+  apigatewayadmin: 31023
+  apigatewayforweb: 30023
+  productservice: 31114
+  basketservice: 31602
+  orderservice: 31705
+  paymentservice: 31104
+  rabbitmqUI: 31672            # http://192.168.150.131:31672
+
+# ── Health probe timing ──────────────────────────────────────────
+# tcpSocket probes — /health endpoint doesn't exist in this project
+probes:
+  readiness:
+    initialDelaySeconds: 30    # wait 30s before first check
+    periodSeconds: 10          # check every 10s
+    failureThreshold: 10       # fail after 10 bad checks
+  liveness:
+    initialDelaySeconds: 60    # wait 60s before first check
+    periodSeconds: 20          # check every 20s
+    failureThreshold: 5        # restart after 5 bad checks
+
+# ── CPU/Memory limits ────────────────────────────────────────────
+resources:
+  small:                       # for gateways and frontends
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "300m"
+  medium:                      # for microservices
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
