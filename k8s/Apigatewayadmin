@@ -1,55 +1,49 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: identityservice-deployment
+  name: apigatewayadmin-deployment
   labels:
-    app: identityservice
+    app: apigatewayadmin
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: identityservice
+      app: apigatewayadmin
   template:
     metadata:
       labels:
-        app: identityservice
+        app: apigatewayadmin
     spec:
       containers:
-        - name: identityservice
-          image: microservices/identityservice:latest
+        - name: apigatewayadmin
+          image: microservices/apigatewayadmin:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
           env:
+            # Must be Production so Ocelot loads ocelot.product.json
+            # (the file with K8s ClusterIP host names)
             - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: ASPNETCORE_URLS
+              value: "http://+:80"
+            - name: Identity__Uri
               valueFrom:
                 configMapKeyRef:
                   name: microservices-config
-                  key: ASPNETCORE_ENVIRONMENT
-            # FIX: password now comes from Secret, not hardcoded plain text
-            - name: SA_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: sqldata-secret
-                  key: sa-password
-            - name: AspIdentityConnection
-              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceAspIdentityDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
-            - name: WebFrontend__Uri
-              value: "http://kubernetes.docker.internal:31328"
-            - name: AdminFrontend__Uri
-              value: "http://kubernetes.docker.internal:31298"
+                  key: Identity__Uri
           readinessProbe:
             httpGet:
               path: /health
               port: 80
-            initialDelaySeconds: 15
+            initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 5
           livenessProbe:
             httpGet:
               path: /health
               port: 80
-            initialDelaySeconds: 30
+            initialDelaySeconds: 20
             periodSeconds: 20
             failureThreshold: 3
           resources:
@@ -57,17 +51,17 @@ spec:
               memory: "128Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
-              cpu: "500m"
+              memory: "256Mi"
+              cpu: "300m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: identityservice-clusterip-srv
+  name: apigatewayadmin-clusterip-srv
 spec:
   type: ClusterIP
   selector:
-    app: identityservice
+    app: apigatewayadmin
   ports:
     - name: http
       protocol: TCP
@@ -77,14 +71,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: identityservice-nodeport-srv
+  name: apigatewayadmin-nodeport-srv
 spec:
   type: NodePort
   selector:
-    app: identityservice
+    app: apigatewayadmin
   ports:
     - name: http
       protocol: TCP
       port: 80
       targetPort: 80
-      nodePort: 31720
+      nodePort: 31023

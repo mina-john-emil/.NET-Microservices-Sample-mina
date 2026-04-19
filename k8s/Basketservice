@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: basketservice-deployment
+  labels:
+    app: basketservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: basketservice
+  template:
+    metadata:
+      labels:
+        app: basketservice
+    spec:
+      containers:
+        - name: basketservice
+          image: microservices/basketservice:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ASPNETCORE_URLS
+              value: "http://+:80"
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+            - name: BasketConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceBasketDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            - name: CacheSettings__ConnectionString
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: CacheSettings__ConnectionString
+            - name: RabbitMq__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__Uri
+            - name: RabbitMq__HostName
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__HostName
+            - name: MicroServiceAddress__Discount__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__Discount__Uri
+            - name: MicroServiceAddress__DiscountGrpc__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__DiscountGrpc__Uri
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: basketservice-clusterip-srv
+spec:
+  type: ClusterIP
+  selector:
+    app: basketservice
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80

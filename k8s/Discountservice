@@ -1,43 +1,48 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: identityservice-deployment
+  name: discountservice-deployment
   labels:
-    app: identityservice
+    app: discountservice
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: identityservice
+      app: discountservice
   template:
     metadata:
       labels:
-        app: identityservice
+        app: discountservice
     spec:
       containers:
-        - name: identityservice
-          image: microservices/identityservice:latest
+        - name: discountservice
+          image: microservices/discountservice:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 80
+            - name: http
+              containerPort: 80
+            - name: grpc
+              containerPort: 81
           env:
             - name: ASPNETCORE_ENVIRONMENT
               valueFrom:
                 configMapKeyRef:
                   name: microservices-config
                   key: ASPNETCORE_ENVIRONMENT
-            # FIX: password now comes from Secret, not hardcoded plain text
             - name: SA_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: sqldata-secret
                   key: sa-password
-            - name: AspIdentityConnection
-              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceAspIdentityDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
-            - name: WebFrontend__Uri
-              value: "http://kubernetes.docker.internal:31328"
-            - name: AdminFrontend__Uri
-              value: "http://kubernetes.docker.internal:31298"
+            - name: DiscountConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceDiscountDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            # Kestrel dual-endpoint: port 80 for REST, port 81 for gRPC (HTTP/2)
+            - name: Kestrel__Endpoints__HTTP__Url
+              value: "http://+:80"
+            - name: Kestrel__Endpoints__GRPC__Url
+              value: "http://+:81"
+            - name: Kestrel__Endpoints__GRPC__Protocols
+              value: "Http2"
           readinessProbe:
             httpGet:
               path: /health
@@ -63,28 +68,17 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: identityservice-clusterip-srv
+  name: discountservice-clusterip-srv
 spec:
   type: ClusterIP
   selector:
-    app: identityservice
+    app: discountservice
   ports:
     - name: http
       protocol: TCP
       port: 80
       targetPort: 80
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: identityservice-nodeport-srv
-spec:
-  type: NodePort
-  selector:
-    app: identityservice
-  ports:
-    - name: http
+    - name: grpc
       protocol: TCP
-      port: 80
-      targetPort: 80
-      nodePort: 31720
+      port: 81
+      targetPort: 81

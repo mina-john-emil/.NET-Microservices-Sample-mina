@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orderservice-deployment
+  labels:
+    app: orderservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orderservice
+  template:
+    metadata:
+      labels:
+        app: orderservice
+    spec:
+      containers:
+        - name: orderservice
+          image: microservices/orderservice:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ASPNETCORE_URLS
+              value: "http://+:80"
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sqldata-secret
+                  key: sa-password
+            # SQL Server connection (order lines / product cache)
+            - name: OrderConnection
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceOrderDB;User Id=sa;Password=$(SA_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
+            # MongoDB connection (order documents)
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: mongo-root-username
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: mongo-root-password
+            - name: DatabaseSettings__ConnectionString
+              value: "mongodb://$(MONGO_USERNAME):$(MONGO_PASSWORD)@mongo-clusterip-srv:27017"
+            - name: DatabaseSettings__DatabaseName
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: DatabaseSettings__DatabaseName
+            - name: RabbitMq__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__Uri
+            - name: RabbitMq__HostName
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: RabbitMq__HostName
+            - name: MicroServiceAddress__Product__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: MicroServiceAddress__Product__Uri
+            - name: Identity__Uri
+              valueFrom:
+                configMapKeyRef:
+                  name: microservices-config
+                  key: Identity__Uri
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderservice-clusterip-srv
+spec:
+  type: ClusterIP
+  selector:
+    app: orderservice
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
