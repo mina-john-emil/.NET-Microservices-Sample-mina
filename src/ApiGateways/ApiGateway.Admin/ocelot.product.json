@@ -12,7 +12,6 @@
       "UpstreamPathTemplate": "/api/ProductManagement",
       "UpstreamHttpMethod": [ "GET", "POST", "PUT" ],
       "AuthenticationOptions": {
-        //"AuthenticationProviderKey": "ApiGatewayAdminAuthenticationScheme"
         "AuthenticationProviderKey": "Bearer"
       }
     },
