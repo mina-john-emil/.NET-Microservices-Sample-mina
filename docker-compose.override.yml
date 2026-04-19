@@ -7,7 +7,7 @@ services:
     volumes:
       - microservice-mongodata:/data/db
     healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,7 +41,7 @@ services:
     volumes:
       - microservice-sqldata:/var/opt/mssql
     healthcheck:
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P '123321Aa@' -Q 'SELECT 1' || exit 1
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '123321Aa@' -Q 'SELECT 1' || exit 1
       interval: 20s
       timeout: 10s
       retries: 5
@@ -84,9 +84,12 @@ services:
     ports:
       - "7002:80"
     depends_on:
-      - sqldata
-      - identityservice
-      - rabbitmq
+      sqldata:
+        condition: service_healthy
+      identityservice:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
   basketservice:
     container_name: microservices-basket.api
@@ -102,9 +105,12 @@ services:
     ports:
       - "6002:80"
     depends_on:
-      - sqldata
-      - identityservice
-      - redisdb
+      sqldata:
+        condition: service_healthy
+      identityservice:
+        condition: service_started
+      redisdb:
+        condition: service_healthy
 
   discountservice:
     container_name: microservices-discount.api
@@ -118,7 +124,8 @@ services:
       - "8002:80"
       - "8003:81"
     depends_on:
-      - sqldata
+      sqldata:
+        condition: service_healthy
 
   productservice:
     container_name: microservices-product.api
@@ -130,7 +137,8 @@ services:
     ports:
       - "11002:80"
     depends_on:
-      - sqldata
+      sqldata:
+        condition: service_healthy
 
   paymentservice.endpoint:
     container_name: microservices-payment.api
@@ -143,8 +151,12 @@ services:
     ports:
       - "10002:80"
     depends_on:
-      - sqldata
-      - identityservice
+      sqldata:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy 
+      identityservice:
+        condition: service_started
 
   identityservice:
     container_name: microservices-identity.api
@@ -157,23 +169,25 @@ services:
     ports:
       - "7018:80"
     depends_on:
-      - sqldata
+      sqldata:
+        condition: service_healthy
 
   apigateway.admin:
     container_name: microservices-apigateway.admin
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:80
       - Identity__Uri=http://identityservice
     ports:
       - "11023:80"
     depends_on:
-      - identityservice
+      identityservice:
+        condition: service_started
 
   apigateway.forweb:
     container_name: microservices-apigateway.forweb
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:80
       - Identity__Uri=http://identityservice
       - MicroserviceAddress__Discount__Uri=http://discountservice
@@ -181,7 +195,8 @@ services:
     ports:
       - "10023:80"
     depends_on:
-      - identityservice
+      identityservice:
+        condition: service_started
 
   microservices.admin.frontend:
     container_name: microservices.admin.frontend
@@ -193,7 +208,10 @@ services:
     ports:
       - "7298:80"
     depends_on:
-      - apigateway.admin
+      apigateway.admin:
+        condition: service_started
+      identityservice:
+        condition: service_started
 
   microservices.web.frontend:
     container_name: microservices.web.frontend
@@ -205,7 +223,10 @@ services:
     ports:
       - "44328:80"
     depends_on:
-      - apigateway.forweb
+      apigateway.forweb:
+        condition: service_started
+      identityservice:
+        condition: service_started
 
 volumes:
   microservice-sqldata:
