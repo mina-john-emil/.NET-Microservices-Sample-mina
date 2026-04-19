@@ -1,7 +1,6 @@
 {
   "Routes": [
     {
-      // Microservice information
       "DownstreamPathTemplate": "/api/Product",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
