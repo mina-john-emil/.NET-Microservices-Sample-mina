@@ -27,11 +27,23 @@ spec:
                   name: microservices-config
                   key: ASPNETCORE_ENVIRONMENT
             - name: AspIdentityConnection
-              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceAspIdentityDB;User Id=sa;password=123321Aa@;Encrypt=False;TrustServerCertificate=true;"
+              value: "Server=sqldata-clusterip-srv,1433;Database=MicroserviceAspIdentityDB;User Id=sa;password=$(DB_PASSWORD);Encrypt=False;TrustServerCertificate=true;"
             - name: WebFrontend__Uri
               value: "http://kubernetes.docker.internal:31328"
             - name: AdminFrontend__Uri
               value: "http://kubernetes.docker.internal:31298"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
