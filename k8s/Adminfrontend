@@ -40,13 +40,13 @@ spec:
                   key: MicroServiceAddress__AdminApiGateway__Uri
           readinessProbe:
             tcpSocket:
-              port: 808080
+              port: 8080
             initialDelaySeconds: 20
             periodSeconds: 10
             failureThreshold: 10
           livenessProbe:
             tcpSocket:
-              port: 808080
+              port: 8080
             initialDelaySeconds: 40
             periodSeconds: 20
             failureThreshold: 5
