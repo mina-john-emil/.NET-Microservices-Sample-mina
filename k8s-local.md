@@ -33,20 +33,11 @@ kubectl wait --for=condition=ready pod -l app=webfrontend --timeout=60s
 kubectl wait --for=condition=ready pod -l app=adminfrontend --timeout=60s
 kubectl wait --for=condition=ready pod -l app=identityservice --timeout=60s
 
-# Get NEW pod names after restart
-WEB_POD=$(kubectl get pod -l app=webfrontend -o jsonpath='{.items[0].metadata.name}')
-ADMIN_POD=$(kubectl get pod -l app=adminfrontend -o jsonpath='{.items[0].metadata.name}')
-IDENTITY_POD=$(kubectl get pod -l app=identityservice -o jsonpath='{.items[0].metadata.name}')
-
-echo "Web: $WEB_POD"
-echo "Admin: $ADMIN_POD"  
-echo "Identity: $IDENTITY_POD"
-
-# Start fresh port-forwards with new pod names
-kubectl port-forward --address 0.0.0.0 pod/$WEB_POD 31443:80 &
-kubectl port-forward --address 0.0.0.0 pod/$ADMIN_POD 31298:80 &
-kubectl port-forward --address 0.0.0.0 pod/$IDENTITY_POD 31720:8080 &
+kubectl port-forward --address 0.0.0.0 deployment/webfrontend-deployment 31443:8080 &
+kubectl port-forward --address 0.0.0.0 deployment/adminfrontend-deployment 31298:8080 &
+kubectl port-forward --address 0.0.0.0 deployment/identityservice-deployment 31720:8080 &
 kubectl port-forward --address 0.0.0.0 service/rabbitmq-clusterip-srv 31672:15672 &
+
 
 sleep 2
 echo "All forwards running:"
