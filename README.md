@@ -215,7 +215,11 @@ Deploying .Net Microservices into <h>Kubernetes</b> and moving deployments to th
 </ul>
 
 <h2>Apply helm with command: </h2>
-<pre>helm install microservices helm/microservices/</pre>
+<pre>
+helm install microservices helm/microservices/
+docker system prune -a --volumes
+docker compose build
+</pre>
 <p>
   <blockquote>
     you can find Port or NodePort of services in k8s yaml files
