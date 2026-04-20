@@ -38,7 +38,11 @@ spec:
             # WebFrontend/AdminFrontend use real VM IP so browser redirect works
             - name: WebFrontend__Uri
               value: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.webfrontend }}"
+              value: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.webfrontend }}"
+              value: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.webfrontend }}"
             - name: AdminFrontend__Uri
+              value: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.adminfrontend }}"
+              value: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.adminfrontend }}"
               value: "http://{{ .Values.global.vmIP }}:{{ .Values.nodePorts.adminfrontend }}"
           {{- include "ms.readinessProbe" . | nindent 10 }}
           {{- include "ms.livenessProbe" . | nindent 10 }}
