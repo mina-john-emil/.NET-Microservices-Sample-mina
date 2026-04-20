@@ -4,7 +4,7 @@ pipeline {
     environment {
         REGISTRY      = "microservices"
         GIT_REPO      = "https://github.com/mina-john-emil/.NET-Microservices-Sample-mina.git"
-        VM_IP         = "192.168.150.131"
+        VM_IP         = "192.168.150.135"
         IMAGE_TAG     = "${BUILD_NUMBER}"
         // FIX #3: define namespace as a plain string here so it is
         // accessible everywhere including post{} blocks.
@@ -15,6 +15,7 @@ pipeline {
         // MissingPropertyException. Using a local def inside node{}
         // avoids that completely — see post{} section below.
         K8S_NS        = "default"
+        STORAGE_DRIVER = "vfs"
     }
 
     stages {
