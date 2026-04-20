@@ -252,8 +252,8 @@ pipeline {
             echo "Pipeline finished. Build #${BUILD_NUMBER}"
             // Clean up dangling Docker images to save disk space
             node('') {
-            sh "docker image prune -f"
-        }
+                sh "docker image prune -f"
+            }
         }
     }
 }
