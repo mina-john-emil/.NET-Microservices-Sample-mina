@@ -5,7 +5,7 @@ global:
   pullPolicy: IfNotPresent     # Don't pull if image already exists on node
   environment: Production      # ASPNETCORE_ENVIRONMENT value
   appPort: 8080                # Port .NET services listen on (identityservice=8080)
-  vmIP: "192.168.150.131"      # Your VM IP — used for Identity redirect URLs
+  vmIP: "192.168.150.135"      # Your VM IP — used for Identity redirect URLs
 
 # ── Credentials stored here, base64-encoded in secrets.yaml ─────
 secrets:
