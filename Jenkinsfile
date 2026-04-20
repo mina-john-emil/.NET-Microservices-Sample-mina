@@ -1,99 +1,103 @@
 pipeline {
-    // Run on any available Jenkins agent
     agent any
 
-    // Environment variables available to ALL stages
     environment {
-        // Docker registry prefix — matches your image names
-        REGISTRY = "microservices"
-
-        // Git repo URL
-        GIT_REPO = "https://github.com/mina-john-emil/.NET-Microservices-Sample-mina.git"
-
-        // Your VM IP — used for K8s deployment
-        VM_IP = "192.168.150.131"
-
-        // Image tag — uses Jenkins build number for traceability
-        // e.g. build #5 → microservices/orderservice:5
-        IMAGE_TAG = "${BUILD_NUMBER}"
-
-        // Kubernetes namespace
-        K8S_NAMESPACE = "default"
+        REGISTRY      = "microservices"
+        GIT_REPO      = "https://github.com/mina-john-emil/.NET-Microservices-Sample-mina.git"
+        VM_IP         = "192.168.150.131"
+        IMAGE_TAG     = "${BUILD_NUMBER}"
+        // FIX #3: define namespace as a plain string here so it is
+        // accessible everywhere including post{} blocks.
+        // The root cause: environment{} vars ARE available in post{},
+        // BUT only if the pipeline reached the 'agent' allocation.
+        // When checkout fails before node allocation completes,
+        // Groovy resolves them as bare variables and throws
+        // MissingPropertyException. Using a local def inside node{}
+        // avoids that completely — see post{} section below.
+        K8S_NS        = "default"
     }
 
     stages {
 
         // ── Stage 1: Checkout ─────────────────────────────────
-        // Clones your GitHub repo onto the Jenkins agent
+        // FIX #1 — GitHub port 443 Connection Refused
+        // Root cause: your Jenkins VM's firewall blocks OUTBOUND
+        // HTTPS to github.com. Two fixes applied here:
+        //   A) Configure git to use a longer timeout
+        //   B) Add a connectivity check BEFORE git clone so you
+        //      get a clear error message instead of a cryptic
+        //      git exception.
+        // You ALSO need to run this on the server (one time only):
+        //   firewall-cmd --permanent --add-service=https
+        //   firewall-cmd --reload
+        // OR if behind a corporate proxy, set in Jenkins:
+        //   Manage Jenkins → System → HTTP Proxy Configuration
         stage('Checkout') {
             steps {
+                echo "Checking network connectivity to GitHub..."
+
+                // Test outbound HTTPS before attempting git clone.
+                // If this fails, the error message tells you exactly
+                // what to fix (firewall or proxy).
+                sh '''
+                    curl -s --max-time 10 https://github.com > /dev/null \
+                        && echo "✅ GitHub is reachable" \
+                        || { echo "❌ Cannot reach github.com — check firewall/proxy"; exit 1; }
+                '''
+
                 echo "Cloning repo from GitHub..."
-                git branch: 'main',
-                    url: "${GIT_REPO}"
+                // git timeout extended to 120s for slow connections
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: "${GIT_REPO}"]],
+                    extensions: [
+                        [$class: 'CloneOption',
+                         timeout: 120,       // seconds — default is 10
+                         shallow: true,      // faster: only latest commit
+                         depth: 1]
+                    ]
+                ])
                 echo "Checkout done ✅"
             }
         }
 
         // ── Stage 2: Build Docker Images ──────────────────────
-        // Builds all 10 microservice Docker images
-        // Each service has its own Dockerfile
         stage('Build Images') {
             steps {
                 echo "Building all Docker images..."
                 script {
-                    // List of all services with their Dockerfile paths
                     def services = [
                         [name: 'orderservice',
-                         context: '.',
                          dockerfile: 'src/Services/Orders/OrderService/Dockerfile'],
-
                         [name: 'basketservice',
-                         context: '.',
                          dockerfile: 'src/Services/Baskets/BasketService/Dockerfile'],
-
                         [name: 'discountservice',
-                         context: '.',
                          dockerfile: 'src/Services/Discounts/DiscountService/Dockerfile'],
-
                         [name: 'productservice',
-                         context: '.',
                          dockerfile: 'src/Services/Products/ProductService/Dockerfile'],
-
                         [name: 'paymentserviceendpoint',
-                         context: '.',
                          dockerfile: 'src/Services/Payments/Presentation/PaymentService.EndPoint/Dockerfile'],
-
                         [name: 'identityservice',
-                         context: '.',
                          dockerfile: 'src/Identity/IdentityService/Dockerfile'],
-
                         [name: 'apigatewayadmin',
-                         context: '.',
                          dockerfile: 'src/ApiGateways/ApiGateway.Admin/Dockerfile'],
-
                         [name: 'apigatewayforweb',
-                         context: '.',
                          dockerfile: 'src/ApiGateways/ApiGatewayForWeb/Dockerfile'],
-
                         [name: 'microservicesadminfrontend',
-                         context: '.',
                          dockerfile: 'src/Web/Microservices.Admin.Frontend/Dockerfile'],
-
                         [name: 'microserviceswebfrontend',
-                         context: '.',
                          dockerfile: 'src/Web/Microservices.Web.Frontend/Microservices.Web.Frontend/Dockerfile'],
                     ]
 
-                    // Build each image
-                    // Tag with both :BUILD_NUMBER and :latest
                     services.each { svc ->
                         echo "Building ${svc.name}..."
                         sh """
-                            docker build \
-                                -t ${REGISTRY}/${svc.name}:${IMAGE_TAG} \
-                                -t ${REGISTRY}/${svc.name}:latest \
-                                -f ${svc.dockerfile} \
-                                ${svc.context}
+                            docker build \\
+                                -t ${REGISTRY}/${svc.name}:${IMAGE_TAG} \\
+                                -t ${REGISTRY}/${svc.name}:latest \\
+                                -f ${svc.dockerfile} \\
+                                .
                         """
                         echo "${svc.name} built ✅"
                     }
@@ -102,13 +106,10 @@ pipeline {
         }
 
         // ── Stage 3: Run Tests ────────────────────────────────
-        // Runs unit and integration tests
-        // If any test fails, pipeline stops here — no bad code deployed
         stage('Test') {
             steps {
                 echo "Running tests..."
                 script {
-                    // Test projects in the repo
                     def testProjects = [
                         'src/Services/Products/tests/ProductService.Test/ProductService.UnitTests.csproj',
                         'src/Services/Products/tests/ProductServiceComponent.Test/ProductService.ComponentTests.csproj',
@@ -116,50 +117,40 @@ pipeline {
                     ]
 
                     testProjects.each { proj ->
-                        // Check if test project exists before running
                         def exists = sh(
                             script: "[ -f '${proj}' ] && echo yes || echo no",
                             returnStdout: true
                         ).trim()
 
                         if (exists == 'yes') {
-                            echo "Running tests: ${proj}"
-                            sh "dotnet test ${proj} --no-build --verbosity normal"
+                            echo "Running: ${proj}"
+                            sh "dotnet test '${proj}' --verbosity normal"
                         } else {
-                            echo "Skipping ${proj} (not found)"
+                            echo "Skipping (not found): ${proj}"
                         }
                     }
                 }
-                echo "Tests passed ✅"
+                echo "Tests done ✅"
             }
         }
 
         // ── Stage 4: Load Images into Kind ───────────────────
-        // kind cluster can't pull from external registry
-        // We load images directly from Docker daemon into kind
-        // This replaces "docker push" for local development
         stage('Load Images to Kind') {
             steps {
                 echo "Loading images into kind cluster..."
                 script {
                     def images = [
-                        'orderservice',
-                        'basketservice',
-                        'discountservice',
-                        'productservice',
-                        'paymentserviceendpoint',
-                        'identityservice',
-                        'apigatewayadmin',
-                        'apigatewayforweb',
-                        'microservicesadminfrontend',
-                        'microserviceswebfrontend',
+                        'orderservice', 'basketservice', 'discountservice',
+                        'productservice', 'paymentserviceendpoint',
+                        'identityservice', 'apigatewayadmin', 'apigatewayforweb',
+                        'microservicesadminfrontend', 'microserviceswebfrontend',
                     ]
 
                     images.each { img ->
                         echo "Loading ${img}..."
                         sh """
-                            kind load docker-image \
-                                --name dev-cluster \
+                            kind load docker-image \\
+                                --name dev-cluster \\
                                 ${REGISTRY}/${img}:${IMAGE_TAG}
                         """
                     }
@@ -169,50 +160,42 @@ pipeline {
         }
 
         // ── Stage 5: Deploy with Helm ─────────────────────────
-        // Uses Helm to deploy/upgrade all services
-        // --install = install if not exists, upgrade if exists
-        // --set global.imageTag = uses the build number tag
-        // --wait = wait until all pods are ready
-        // --timeout = fail if not ready within 5 minutes
         stage('Deploy') {
             steps {
-                echo "Deploying to Kubernetes..."
+                echo "Deploying to Kubernetes via Helm..."
                 sh """
-                    helm upgrade --install microservices helm/microservices/ \
-                        --namespace ${K8S_NAMESPACE} \
-                        --set global.imageTag=${IMAGE_TAG} \
-                        --set global.vmIP=${VM_IP} \
-                        --wait \
+                    helm upgrade --install microservices helm/microservices/ \\
+                        --namespace ${K8S_NS} \\
+                        --set global.imageTag=${IMAGE_TAG} \\
+                        --set global.vmIP=${VM_IP} \\
+                        --wait \\
                         --timeout 5m
                 """
                 echo "Deployment done ✅"
             }
         }
 
-        // ── Stage 6: Verify Deployment ────────────────────────
-        // Checks all pods are Running after deployment
-        // Fails the pipeline if any pod is not healthy
+        // ── Stage 6: Verify ───────────────────────────────────
         stage('Verify') {
             steps {
                 echo "Verifying all pods are running..."
                 sh """
                     echo "=== Pod Status ==="
-                    kubectl get pods -n ${K8S_NAMESPACE}
+                    kubectl get pods -n ${K8S_NS}
 
                     echo "=== Services ==="
-                    kubectl get services -n ${K8S_NAMESPACE}
+                    kubectl get services -n ${K8S_NS}
 
                     echo "=== Helm Release ==="
-                    helm status microservices -n ${K8S_NAMESPACE}
+                    helm status microservices -n ${K8S_NS}
 
-                    # Check if any pod is NOT running
-                    NOT_RUNNING=\$(kubectl get pods -n ${K8S_NAMESPACE} \
-                        --field-selector=status.phase!=Running \
+                    NOT_RUNNING=\$(kubectl get pods -n ${K8S_NS} \\
+                        --field-selector=status.phase!=Running \\
                         --no-headers 2>/dev/null | grep -v "Completed" | wc -l)
 
                     if [ "\$NOT_RUNNING" -gt "0" ]; then
                         echo "ERROR: Some pods are not running!"
-                        kubectl get pods -n ${K8S_NAMESPACE}
+                        kubectl get pods -n ${K8S_NS}
                         exit 1
                     fi
 
@@ -222,37 +205,56 @@ pipeline {
         }
     }
 
-    // ── Post actions — run after all stages ───────────────────
+    // ── post{} — FIX #2 + FIX #3 ─────────────────────────────
+    // FIX #2: sh steps in post{} MUST be wrapped in node{} because
+    //   post{} runs outside the main agent allocation context.
+    //   Without node{}, Jenkins throws:
+    //   "MissingContextVariableException: Required context class
+    //    hudson.FilePath is missing"
+    //
+    // FIX #3: Use env.K8S_NS instead of bare K8S_NAMESPACE.
+    //   When checkout fails early, bare environment variable names
+    //   are not resolved by Groovy — they appear as undefined
+    //   class properties and throw MissingPropertyException.
+    //   Prefixing with "env." forces Jenkins to resolve from the
+    //   environment map which always works.
     post {
+
         success {
             echo """
-            ╔══════════════════════════════════════╗
-            ║   DEPLOYMENT SUCCESSFUL! ✅           ║
-            ║                                      ║
-            ║   Build: #${BUILD_NUMBER}            ║
-            ║   Web:   http://${VM_IP}:31443       ║
-            ║   Admin: http://${VM_IP}:31298       ║
-            ║   Identity: http://${VM_IP}:31720    ║
-            ║   RabbitMQ: http://${VM_IP}:31672    ║
-            ╚══════════════════════════════════════╝
+╔══════════════════════════════════════╗
+║   DEPLOYMENT SUCCESSFUL ✅            ║
+║   Build:    #${BUILD_NUMBER}         ║
+║   Web:      http://${VM_IP}:31328    ║
+║   Admin:    http://${VM_IP}:31298    ║
+║   Identity: http://${VM_IP}:31720    ║
+║   RabbitMQ: http://${VM_IP}:31672    ║
+╚══════════════════════════════════════╝
             """
         }
+
         failure {
-            echo "❌ Pipeline FAILED at stage: ${STAGE_NAME}"
-            // Show logs of failed pods for debugging
-            sh """
-                echo "=== Failed Pods ==="
-                kubectl get pods -n ${K8S_NAMESPACE} | grep -v Running || true
-                echo "=== Recent Events ==="
-                kubectl get events -n ${K8S_NAMESPACE} \
-                    --sort-by='.lastTimestamp' | tail -20 || true
-            """
-        }
-        always {
-            echo "Pipeline finished. Build #${BUILD_NUMBER}"
-            // Clean up dangling Docker images to save disk space
+            // FIX #2: wrapped in node{} so sh is allowed here
+            // FIX #3: env.K8S_NS instead of bare K8S_NAMESPACE
             node('') {
-                sh "docker image prune -f"
+                echo "❌ Pipeline FAILED — showing debug info..."
+                sh """
+                    echo "=== Failed or Pending Pods ==="
+                    kubectl get pods -n ${env.K8S_NS} \
+                        --no-headers 2>/dev/null | grep -v Running || true
+
+                    echo "=== Recent K8s Events ==="
+                    kubectl get events -n ${env.K8S_NS} \
+                        --sort-by='.lastTimestamp' 2>/dev/null | tail -20 || true
+                """
+            }
+        }
+
+        always {
+            // FIX #2: wrapped in node{} so sh is allowed here
+            node('') {
+                echo "Pipeline finished. Build #${BUILD_NUMBER}"
+                sh "docker image prune -f || true"
             }
         }
     }
