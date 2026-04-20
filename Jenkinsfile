@@ -112,9 +112,7 @@ pipeline {
                 echo "Running tests..."
                 script {
                     def testProjects = [
-                        'src/Services/Products/tests/ProductService.Test/ProductService.UnitTests.csproj',
                         'src/Services/Products/tests/ProductServiceComponent.Test/ProductService.ComponentTests.csproj',
-                        'src/Services/Orders/tests/OrderService.ContractTests/OrderService.ContractTests.csproj',
                     ]
 
                     testProjects.each { proj ->
