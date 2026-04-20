@@ -216,9 +216,9 @@ Deploying .Net Microservices into <h>Kubernetes</b> and moving deployments to th
 
 <h2>Apply helm with command: </h2>
 <pre>
-helm install microservices helm/microservices/
 docker system prune -a --volumes
 docker compose build
+helm install microservices helm/microservices/
 </pre>
 <p>
   <blockquote>
