@@ -35,7 +35,7 @@ kubectl patch configmap microservices-config \
   --type merge \
   -p '{
     "data": {
-      "Identity__Uri": "http://192.168.150.131:31720",
+      "Identity__Uri": "http://<your ip>:31720",
       "MicroServiceAddress__AdminApiGateway__Uri": "http://<your ip>:31023",
       "MicroserviceAddress__ApiGatewayForWeb__Uri": "http://<your ip>:30023",
       "MicroServiceAddress__Product__Uri": "http://<your ip>:31114",
