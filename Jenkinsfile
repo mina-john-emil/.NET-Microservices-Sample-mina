@@ -15,7 +15,7 @@ pipeline {
         // MissingPropertyException. Using a local def inside node{}
         // avoids that completely — see post{} section below.
         K8S_NS        = "default"
-        STORAGE_DRIVER = "vfs"
+        STORAGE_DRIVER = "overlay2"
     }
 
     stages {
