@@ -3,6 +3,9 @@ docker system prune -a --volumes
 docker compose build
 
 kubectl apply -f k8s/
+or
+helm install microservices helm/microservices/
+
 # Check firewall status
 firewall-cmd --state
 
