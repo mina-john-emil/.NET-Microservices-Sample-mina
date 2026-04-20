@@ -28,16 +28,62 @@ firewall-cmd --list-ports
 kill $(jobs -p) 2>/dev/null
 sleep 3
 
-# Wait for new pods to be ready
-kubectl wait --for=condition=ready pod -l app=webfrontend --timeout=60s
-kubectl wait --for=condition=ready pod -l app=adminfrontend --timeout=60s
-kubectl wait --for=condition=ready pod -l app=identityservice --timeout=60s
 
-kubectl port-forward --address 0.0.0.0 deployment/webfrontend-deployment 31443:8080 &
-kubectl port-forward --address 0.0.0.0 deployment/adminfrontend-deployment 31298:8080 &
-kubectl port-forward --address 0.0.0.0 deployment/identityservice-deployment 31720:8080 &
+
+# Update configmap with correct VM IP for all service URLs
+kubectl patch configmap microservices-config \
+  --type merge \
+  -p '{
+    "data": {
+      "Identity__Uri": "http://192.168.150.131:31720",
+      "MicroServiceAddress__AdminApiGateway__Uri": "http://<your ip>:31023",
+      "MicroserviceAddress__ApiGatewayForWeb__Uri": "http://<your ip>:30023",
+      "MicroServiceAddress__Product__Uri": "http://<your ip>:31114",
+      "MicroServiceAddress__Discount__Uri": "http://<your ip>:31600",
+      "MicroServiceAddress__DiscountGrpc__Uri": "http://<your ip>:31600"
+    }
+  }'
+
+# identityservice must redirect back to your real VM IP after login
+kubectl set env deployment/identityservice-deployment \
+  WebFrontend__Uri="http://<your ip>:31443" \
+  AdminFrontend__Uri="http://<your ip>:31298"
+
+# Restart all services so they pick up new configmap values
+kubectl rollout restart deployment/identityservice-deployment
+kubectl rollout restart deployment/basketservice-deployment
+kubectl rollout restart deployment/orderservice-deployment
+kubectl rollout restart deployment/adminfrontend-deployment
+kubectl rollout restart deployment/webfrontend-deployment
+kubectl rollout restart deployment/apigatewayadmin-deployment
+kubectl rollout restart deployment/apigatewayforweb-deployment
+
+# Wait for all to be ready
+kubectl rollout status deployment/identityservice-deployment --timeout=60s
+kubectl rollout status deployment/webfrontend-deployment --timeout=60s
+kubectl rollout status deployment/adminfrontend-deployment --timeout=60s
+
+# Kill old forwards
+kill $(jobs -p) 2>/dev/null
+sleep 3
+
+# Get new pod names after restart
+WEB_POD=$(kubectl get pod -l app=webfrontend -o jsonpath='{.items[0].metadata.name}')
+ADMIN_POD=$(kubectl get pod -l app=adminfrontend -o jsonpath='{.items[0].metadata.name}')
+IDENTITY_POD=$(kubectl get pod -l app=identityservice -o jsonpath='{.items[0].metadata.name}')
+
+echo "Web:      $WEB_POD"
+echo "Admin:    $ADMIN_POD"
+echo "Identity: $IDENTITY_POD"
+
+# Port-forward using correct ports
+kubectl port-forward --address 0.0.0.0 pod/$WEB_POD 31443:8080 &
+kubectl port-forward --address 0.0.0.0 pod/$ADMIN_POD 31298:8080 &
+kubectl port-forward --address 0.0.0.0 pod/$IDENTITY_POD 31720:8080 &
 kubectl port-forward --address 0.0.0.0 service/rabbitmq-clusterip-srv 31672:15672 &
 
+sleep 2
+jobs
 
 sleep 2
 echo "All forwards running:"
