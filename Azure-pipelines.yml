@@ -16,7 +16,7 @@ variables:
   HELM_RELEASE: 'microservices'
   HELM_CHART: 'helm/microservices/'
   KUBE_NAMESPACE: 'default'
-  KUBECONFIG_PATH: '/var/lib/jenkins/.kube/config'
+  KUBECONFIG_PATH: '/home/minajohn/.kube/config'
 
   # All microservice image names
   SERVICES: >-
@@ -88,12 +88,12 @@ stages:
         build_image basketservice            src/Services/Baskets/BasketService/Dockerfile
         build_image discountservice          src/Services/Discounts/DiscountService/Dockerfile
         build_image productservice           src/Services/Products/ProductService/Dockerfile
-        build_image paymentserviceendpoint   src/Services/Payments/PaymentServiceEndpoint/Dockerfile
-        build_image identityservice          src/Services/Identity/IdentityService/Dockerfile
-        build_image apigatewayadmin          src/ApiGateways/ApiGatewayAdmin/Dockerfile
+        build_image paymentserviceendpoint   src/Services/Payments/Presentation/PaymentService.EndPoint/Dockerfile
+        build_image identityservice          src/Identity/IdentityService/Dockerfile
+        build_image apigatewayadmin          src/ApiGateways/ApiGateway.Admin/Dockerfile
         build_image apigatewayforweb         src/ApiGateways/ApiGatewayForWeb/Dockerfile
-        build_image microservicesadminfrontend  src/WebApps/AdminFrontend/Dockerfile
-        build_image microserviceswebfrontend    src/WebApps/WebFrontend/Dockerfile
+        build_image microservicesadminfrontend  src/Web/Microservices.Admin.Frontend/Dockerfile
+        build_image microserviceswebfrontend    src/Web/Microservices.Web.Frontend/Microservices.Web.Frontend/Dockerfile
 
         echo ""
         echo "✅ All images built successfully"
@@ -171,7 +171,7 @@ stages:
         fi
 
         # Always export kubeconfig so kubectl/helm work under jenkins user
-        mkdir -p /var/lib/jenkins/.kube
+        mkdir -p /home/minajohn/.kube
         kind export kubeconfig \
           --name $(KIND_CLUSTER) \
           --kubeconfig $(KUBECONFIG_PATH)
