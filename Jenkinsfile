@@ -198,7 +198,7 @@ pipeline {
                         --set global.imageTag=${IMAGE_TAG} \\
                         --set global.vmIP=${VM_IP} \\
                         --wait \\
-                        --timeout 15m
+                        --timeout 10m
                 """
                 echo "Deployment done ✅"
             }
