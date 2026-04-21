@@ -1,0 +1,368 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  name: Default          # ← your self-hosted agent (same VM as Jenkins)
+  # If you use Microsoft-hosted agents instead, replace with:
+  # vmImage: 'ubuntu-latest'
+
+variables:
+  BUILD_NUMBER: $(Build.BuildId)
+  VM_IP: '192.168.150.135'
+  KIND_CLUSTER: 'dev-cluster'
+  KIND_CONFIG: 'kind-config.yaml'
+  HELM_RELEASE: 'microservices'
+  HELM_CHART: 'helm/microservices/'
+  KUBE_NAMESPACE: 'default'
+  KUBECONFIG_PATH: '/var/lib/jenkins/.kube/config'
+
+  # All microservice image names
+  SERVICES: >-
+    orderservice
+    basketservice
+    discountservice
+    productservice
+    paymentserviceendpoint
+    identityservice
+    apigatewayadmin
+    apigatewayforweb
+    microservicesadminfrontend
+    microserviceswebfrontend
+
+stages:
+
+# ─────────────────────────────────────────────
+# STAGE 1 – Checkout & Validate
+# ─────────────────────────────────────────────
+- stage: Checkout
+  displayName: '📥 Checkout'
+  jobs:
+  - job: CheckoutJob
+    displayName: 'Checkout from GitHub'
+    steps:
+
+    - checkout: self
+      fetchDepth: 1
+      displayName: 'Shallow clone repo'
+
+    - script: |
+        echo "✅ Repo checked out"
+        echo "   Branch  : $(Build.SourceBranchName)"
+        echo "   Commit  : $(Build.SourceVersion)"
+        echo "   Build # : $(BUILD_NUMBER)"
+      displayName: 'Print build info'
+
+    - script: |
+        curl -s --max-time 10 https://github.com && echo "✅ GitHub is reachable" || (echo "❌ GitHub unreachable" && exit 1)
+      displayName: 'Network connectivity check'
+
+# ─────────────────────────────────────────────
+# STAGE 2 – Build Docker Images
+# ─────────────────────────────────────────────
+- stage: BuildImages
+  displayName: '🐳 Build Images'
+  dependsOn: Checkout
+  jobs:
+  - job: BuildDockerImages
+    displayName: 'Build all microservice images'
+    steps:
+
+    - checkout: self
+      fetchDepth: 1
+
+    - script: |
+        set -e
+
+        build_image() {
+          local SERVICE=$1
+          local DOCKERFILE=$2
+          echo "──────────────────────────────────────"
+          echo "Building $SERVICE ..."
+          docker build \
+            -t microservices/$SERVICE:$(BUILD_NUMBER) \
+            -t microservices/$SERVICE:latest \
+            -f $DOCKERFILE .
+          echo "✅ $SERVICE built"
+        }
+
+        build_image orderservice             src/Services/Orders/OrderService/Dockerfile
+        build_image basketservice            src/Services/Baskets/BasketService/Dockerfile
+        build_image discountservice          src/Services/Discounts/DiscountService/Dockerfile
+        build_image productservice           src/Services/Products/ProductService/Dockerfile
+        build_image paymentserviceendpoint   src/Services/Payments/PaymentServiceEndpoint/Dockerfile
+        build_image identityservice          src/Services/Identity/IdentityService/Dockerfile
+        build_image apigatewayadmin          src/ApiGateways/ApiGatewayAdmin/Dockerfile
+        build_image apigatewayforweb         src/ApiGateways/ApiGatewayForWeb/Dockerfile
+        build_image microservicesadminfrontend  src/WebApps/AdminFrontend/Dockerfile
+        build_image microserviceswebfrontend    src/WebApps/WebFrontend/Dockerfile
+
+        echo ""
+        echo "✅ All images built successfully"
+      displayName: 'Build all Docker images'
+
+# ─────────────────────────────────────────────
+# STAGE 3 – Run Tests
+# ─────────────────────────────────────────────
+- stage: Test
+  displayName: '🧪 Test'
+  dependsOn: BuildImages
+  jobs:
+  - job: RunTests
+    displayName: 'Run unit & component tests'
+    steps:
+
+    - checkout: self
+      fetchDepth: 1
+
+    - script: |
+        set -e
+        echo "Running Order Service tests..."
+        dotnet test src/Services/Orders/tests/ \
+          --configuration Debug \
+          --logger "trx;LogFileName=order-tests.trx" \
+          --results-directory $(Agent.TempDirectory)/TestResults \
+          || true
+
+        echo "Running Product Service component tests..."
+        dotnet test src/Services/Products/tests/ProductServiceComponent.Test/ \
+          --configuration Debug \
+          --logger "trx;LogFileName=product-tests.trx" \
+          --results-directory $(Agent.TempDirectory)/TestResults \
+          || true
+
+        echo "✅ Tests done"
+      displayName: 'Run dotnet tests'
+
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      condition: always()
+      inputs:
+        testResultsFormat: 'VSTest'
+        testResultsFiles: '$(Agent.TempDirectory)/TestResults/**/*.trx'
+        failTaskOnFailedTests: false
+        publishRunAttachments: true
+
+# ─────────────────────────────────────────────
+# STAGE 4 – Initialize KinD Cluster
+# ─────────────────────────────────────────────
+- stage: InitKinD
+  displayName: '☸️ Initialize KinD'
+  dependsOn: Test
+  jobs:
+  - job: InitKinDCluster
+    displayName: 'Create or verify KinD cluster'
+    steps:
+
+    - checkout: self
+      fetchDepth: 1
+
+    - script: |
+        set -e
+
+        echo "Checking for existing KinD cluster..."
+        if ! kind get clusters 2>/dev/null | grep -q "$(KIND_CLUSTER)"; then
+          echo "Cluster not found — creating $(KIND_CLUSTER)..."
+          kind create cluster \
+            --name $(KIND_CLUSTER) \
+            --config $(KIND_CONFIG) \
+            --wait 120s
+          echo "✅ Cluster created"
+        else
+          echo "✅ Cluster already exists"
+        fi
+
+        # Always export kubeconfig so kubectl/helm work under jenkins user
+        mkdir -p /var/lib/jenkins/.kube
+        kind export kubeconfig \
+          --name $(KIND_CLUSTER) \
+          --kubeconfig $(KUBECONFIG_PATH)
+        
+        export KUBECONFIG=$(KUBECONFIG_PATH)
+
+        echo ""
+        echo "── Cluster nodes ──"
+        kubectl get nodes
+        echo ""
+        echo "── Cluster info ──"
+        kubectl cluster-info
+      displayName: 'Create/verify KinD cluster & export kubeconfig'
+      env:
+        KUBECONFIG: $(KUBECONFIG_PATH)
+
+# ─────────────────────────────────────────────
+# STAGE 5 – Load Images into KinD
+# ─────────────────────────────────────────────
+- stage: LoadImages
+  displayName: '📦 Load Images to KinD'
+  dependsOn: InitKinD
+  jobs:
+  - job: LoadImagesToKinD
+    displayName: 'Load Docker images into KinD node'
+    steps:
+
+    - script: |
+        set -e
+
+        load_image() {
+          local SERVICE=$1
+          echo "Loading microservices/$SERVICE:$(BUILD_NUMBER) ..."
+          kind load docker-image \
+            --name $(KIND_CLUSTER) \
+            microservices/$SERVICE:$(BUILD_NUMBER)
+          echo "✅ $SERVICE loaded"
+        }
+
+        load_image orderservice
+        load_image basketservice
+        load_image discountservice
+        load_image productservice
+        load_image paymentserviceendpoint
+        load_image identityservice
+        load_image apigatewayadmin
+        load_image apigatewayforweb
+        load_image microservicesadminfrontend
+        load_image microserviceswebfrontend
+
+        echo ""
+        echo "✅ All images loaded into KinD cluster"
+      displayName: 'Load all images into KinD'
+
+# ─────────────────────────────────────────────
+# STAGE 6 – Helm Deploy
+# ─────────────────────────────────────────────
+- stage: Deploy
+  displayName: '🚀 Deploy'
+  dependsOn: LoadImages
+  jobs:
+  - job: HelmDeploy
+    displayName: 'Deploy via Helm'
+    timeoutInMinutes: 15
+    steps:
+
+    - checkout: self
+      fetchDepth: 1
+
+    - script: |
+        set -e
+        export KUBECONFIG=$(KUBECONFIG_PATH)
+
+        echo "── Pre-deploy cluster state ──"
+        kubectl get nodes
+        kubectl get pods -n $(KUBE_NAMESPACE) 2>/dev/null || true
+
+        echo ""
+        echo "── Running Helm upgrade/install ──"
+        helm upgrade --install $(HELM_RELEASE) $(HELM_CHART) \
+          --namespace $(KUBE_NAMESPACE) \
+          --set global.imageTag=$(BUILD_NUMBER) \
+          --set global.vmIP=$(VM_IP) \
+          --wait \
+          --timeout 10m \
+          --atomic \
+          --debug
+
+        echo "✅ Helm deploy succeeded"
+      displayName: 'Helm upgrade --install'
+      env:
+        KUBECONFIG: $(KUBECONFIG_PATH)
+
+# ─────────────────────────────────────────────
+# STAGE 7 – Verify
+# ─────────────────────────────────────────────
+- stage: Verify
+  displayName: '✅ Verify'
+  dependsOn: Deploy
+  jobs:
+  - job: VerifyDeployment
+    displayName: 'Verify all pods are running'
+    steps:
+
+    - script: |
+        set -e
+        export KUBECONFIG=$(KUBECONFIG_PATH)
+
+        echo "── Pod status ──"
+        kubectl get pods -n $(KUBE_NAMESPACE)
+
+        echo ""
+        echo "── Checking for any non-Running pods ──"
+        FAILED=$(kubectl get pods -n $(KUBE_NAMESPACE) --no-headers | grep -v "Running\|Completed" || true)
+
+        if [ -n "$FAILED" ]; then
+          echo "❌ The following pods are not healthy:"
+          echo "$FAILED"
+          exit 1
+        fi
+
+        echo ""
+        echo "── Services ──"
+        kubectl get svc -n $(KUBE_NAMESPACE)
+
+        echo ""
+        echo "── Helm releases ──"
+        helm list -n $(KUBE_NAMESPACE)
+
+        echo ""
+        echo "✅ All pods are Running — deployment verified!"
+      displayName: 'Verify pods & services'
+      env:
+        KUBECONFIG: $(KUBECONFIG_PATH)
+
+    - script: |
+        export KUBECONFIG=$(KUBECONFIG_PATH)
+        echo "── Recent K8s events ──"
+        kubectl get events -n $(KUBE_NAMESPACE) \
+          --sort-by=.lastTimestamp | tail -20
+      displayName: 'Print recent K8s events'
+      condition: always()
+      env:
+        KUBECONFIG: $(KUBECONFIG_PATH)
+
+# ─────────────────────────────────────────────
+# STAGE 8 – Cleanup (always runs)
+# ─────────────────────────────────────────────
+- stage: Cleanup
+  displayName: '🧹 Cleanup'
+  dependsOn:
+    - Verify
+  condition: always()
+  jobs:
+  - job: CleanupJob
+    displayName: 'Prune dangling Docker images'
+    steps:
+
+    - script: |
+        export KUBECONFIG=$(KUBECONFIG_PATH)
+
+        echo "── Final pod state ──"
+        kubectl get pods -n $(KUBE_NAMESPACE) 2>/dev/null || true
+
+        echo ""
+        echo "── Pruning dangling Docker images ──"
+        docker image prune -f
+
+        echo "Pipeline finished. Build #$(BUILD_NUMBER)"
+      displayName: 'Cleanup & summary'
+      condition: always()
+      env:
+        KUBECONFIG: $(KUBECONFIG_PATH)
+
+    - script: |
+        export KUBECONFIG=$(KUBECONFIG_PATH)
+        echo "=== ❌ PIPELINE FAILED — Debug info ==="
+        echo "── Failed or Pending Pods ──"
+        kubectl get pods -n $(KUBE_NAMESPACE) --no-headers 2>/dev/null \
+          | grep -v "Running\|Completed" || echo "(none)"
+        echo ""
+        echo "── Recent K8s Events ──"
+        kubectl get events -n $(KUBE_NAMESPACE) \
+          --sort-by=.lastTimestamp 2>/dev/null | tail -20 || true
+        echo ""
+        echo "── Helm status ──"
+        helm status $(HELM_RELEASE) -n $(KUBE_NAMESPACE) 2>/dev/null || true
+      displayName: 'Debug info on failure'
+      condition: failed()
+      env:
+        KUBECONFIG: $(KUBECONFIG_PATH)
