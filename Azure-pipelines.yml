@@ -80,11 +80,7 @@ stages:
           local DOCKERFILE=$2
           echo "──────────────────────────────────────"
           echo "Building $SERVICE ..."
-          docker build \
-            --network=host \ 
-            -t microservices/$SERVICE:$(BUILD_NUMBER) \
-            -t microservices/$SERVICE:latest \
-            -f $DOCKERFILE .
+          docker build --network=host -t microservices/$SERVICE:$(BUILD_NUMBER) -t microservices/$SERVICE:latest -f $DOCKERFILE .
           echo "✅ $SERVICE built"
         }
 
