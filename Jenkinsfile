@@ -185,7 +185,6 @@ pipeline {
             }
         }
 
-        // ── Stage 0: Initialize Environment ──────────────────
 
         
         // ── Stage 5: Deploy with Helm ─────────────────────────
