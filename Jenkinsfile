@@ -164,14 +164,13 @@ pipeline {
                 script {
                     echo "Ensuring Kind cluster is running and configured..."
                     sh """
-                        # 1. Create cluster if it doesn't exist
-                        if ! kind get clusters | grep -q "^dev-cluster$"; then
+                        # We use \\\$ to tell Jenkins 'this is a shell variable, not Groovy'
+                        if ! kind get clusters | grep -q "^dev-cluster\\\$"; then
                             echo "Cluster not found. Creating..."
                             kind create cluster --name dev-cluster --config kind-config.yaml
                         fi
 
-                        # 2. Refresh the Jenkins user's kubeconfig
-                        # This solves the 'connection refused' error automatically
+                        # Refresh the Jenkins user's kubeconfig
                         mkdir -p ~/.kube
                         kind get kubeconfig --name dev-cluster > ~/.kube/config
                         chmod 600 ~/.kube/config
