@@ -157,20 +157,23 @@ stages:
 
     - script: |
         set -e
+
+        if kind get clusters 2>/dev/null | grep -q "$(KIND_CLUSTER)"; then
+          echo "Deleting existing cluster..."
+          kind delete cluster --name $(KIND_CLUSTER)
+        fi
+        
         if docker ps -a --format '{{.Names}}' | grep -q "dev-cluster-control-plane"; then
           if ! docker ps --format '{{.Names}}' | grep -q "dev-cluster-control-plane"; then
             echo "KinD container stopped — restarting..."
             docker start dev-cluster-control-plane
             sleep 20
-          fi
         fi
+        
         echo "Checking for existing KinD cluster..."
         if ! kind get clusters 2>/dev/null | grep -q "$(KIND_CLUSTER)"; then
           echo "Cluster not found — creating $(KIND_CLUSTER)..."
-          kind create cluster \
-            --name $(KIND_CLUSTER) \
-            --config $(KIND_CONFIG) \
-            --wait 120s
+          kind create cluster --name $(KIND_CLUSTER) --config $(KIND_CONFIG) --wait 120s
           echo "✅ Cluster created"
         else
           echo "✅ Cluster already exists"
@@ -178,9 +181,7 @@ stages:
 
         # Always export kubeconfig so kubectl/helm work under jenkins user
         mkdir -p /home/minajohn/.kube
-        kind export kubeconfig \
-          --name $(KIND_CLUSTER) \
-          --kubeconfig $(KUBECONFIG_PATH)
+        kind export kubeconfig  --name $(KIND_CLUSTER)  --kubeconfig $(KUBECONFIG_PATH)
         
         export KUBECONFIG=$(KUBECONFIG_PATH)
 
