@@ -93,13 +93,7 @@ pipeline {
 
                     services.each { svc ->
                         echo "Building ${svc.name}..."
-                        sh """
-                            docker build \\
-                                -t ${REGISTRY}/${svc.name}:${IMAGE_TAG} \\
-                                -t ${REGISTRY}/${svc.name}:latest \\
-                                -f ${svc.dockerfile} \\
-                                .
-                        """
+                        sh "docker build -t ${REGISTRY}/${svc.name}:${IMAGE_TAG} -t ${REGISTRY}/${svc.name}:latest -f ${svc.dockerfile} ."
                         echo "${svc.name} built ✅"
                     }
                 }
