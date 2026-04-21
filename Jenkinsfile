@@ -135,7 +135,12 @@ pipeline {
                     else
                         echo "KinD cluster already exists ✅"
                     fi
+                    # Always export kubeconfig so kubectl/helm can reach the cluster
+                    kind export kubeconfig --name dev-cluster --kubeconfig /var/lib/jenkins/.kube/config
+                    echo "Kubeconfig exported ✅"
+                    kubectl get nodes
                 '''
+                
             }
         }
 
