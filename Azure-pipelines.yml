@@ -81,6 +81,7 @@ stages:
           echo "──────────────────────────────────────"
           echo "Building $SERVICE ..."
           docker build \
+            --network=host \ 
             -t microservices/$SERVICE:$(BUILD_NUMBER) \
             -t microservices/$SERVICE:latest \
             -f $DOCKERFILE .
