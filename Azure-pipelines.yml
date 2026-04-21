@@ -157,7 +157,13 @@ stages:
 
     - script: |
         set -e
-
+        if docker ps -a --format '{{.Names}}' | grep -q "dev-cluster-control-plane"; then
+          if ! docker ps --format '{{.Names}}' | grep -q "dev-cluster-control-plane"; then
+            echo "KinD container stopped — restarting..."
+            docker start dev-cluster-control-plane
+            sleep 20
+          fi
+        fi
         echo "Checking for existing KinD cluster..."
         if ! kind get clusters 2>/dev/null | grep -q "$(KIND_CLUSTER)"; then
           echo "Cluster not found — creating $(KIND_CLUSTER)..."
