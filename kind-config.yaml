@@ -4,4 +4,4 @@ networking:
   apiServerPort: 6443 
 nodes:
 - role: control-plane
-  image: kindest/node:v1.21.1
+  image: kindest/node:v1.29.2
