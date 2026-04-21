@@ -126,21 +126,36 @@ pipeline {
                 echo "Tests done ✅"
             }
         }
+
         stage('Initialize KinD Cluster') {
             steps {
                 sh '''
-                    if ! kind get clusters | grep -q "dev-cluster"; then
+                    # Define full paths to binaries to bypass PATH issues
+                    KIND=/usr/local/bin/kind
+                    KUBECTL=/usr/local/bin/kubectl
+
+                    echo "Checking for KinD cluster..."
+                    if ! $KIND get clusters | grep -q "dev-cluster"; then
                         echo "Creating KinD cluster..."
-                        kind create cluster --name dev-cluster --config kind-config.yaml --wait 60s
+                        $KIND create cluster --name dev-cluster --config kind-config.yaml --wait 60s
                     else
                         echo "KinD cluster already exists ✅"
                     fi
-                    # Always export kubeconfig so kubectl/helm can reach the cluster
-                    kind export kubeconfig --name dev-cluster --kubeconfig /var/lib/jenkins/.kube/config
+
+                    # Ensure the .kube directory exists for the jenkins user
+                    mkdir -p /var/lib/jenkins/.kube
+
+                    # Always export kubeconfig using the full path
+                    $KIND export kubeconfig --name dev-cluster --kubeconfig /var/lib/jenkins/.kube/config
+                    
+                    # Fix permissions so Jenkins can read the file it just created
+                    chmod 600 /var/lib/jenkins/.kube/config
+                    
                     echo "Kubeconfig exported ✅"
-                    kubectl get nodes
+                    
+                    # Verify connectivity using the full path and explicit config location
+                    $KUBECTL --kubeconfig /var/lib/jenkins/.kube/config get nodes
                 '''
-                
             }
         }
 
