@@ -231,21 +231,29 @@ pipeline {
                 """
             }
         }
-    }
+    
+        // ── Stage 7: Port Forward ─────────────────────────────
+        stage('Port Forward') {
+            steps {
+                echo "Setting up port forwarding..."
+                sh """
+                    WEB_POD=\$(kubectl get pod -l app=webfrontend -n ${K8S_NS} -o jsonpath='{.items[0].metadata.name}')
+                    ADMIN_POD=\$(kubectl get pod -l app=adminfrontend -n ${K8S_NS} -o jsonpath='{.items[0].metadata.name}')
+                    IDENTITY_POD=\$(kubectl get pod -l app=identityservice -n ${K8S_NS} -o jsonpath='{.items[0].metadata.name}')
 
-    // ── post{} — FIX #2 + FIX #3 ─────────────────────────────
-    // FIX #2: sh steps in post{} MUST be wrapped in node{} because
-    //   post{} runs outside the main agent allocation context.
-    //   Without node{}, Jenkins throws:
-    //   "MissingContextVariableException: Required context class
-    //    hudson.FilePath is missing"
-    //
-    // FIX #3: Use env.K8S_NS instead of bare K8S_NAMESPACE.
-    //   When checkout fails early, bare environment variable names
-    //   are not resolved by Groovy — they appear as undefined
-    //   class properties and throw MissingPropertyException.
-    //   Prefixing with "env." forces Jenkins to resolve from the
-    //   environment map which always works.
+                    echo "Web Pod:      \$WEB_POD"
+                    echo "Admin Pod:    \$ADMIN_POD"
+                    echo "Identity Pod: \$IDENTITY_POD"
+
+                    # Run port‑forwards in background
+                    kubectl port-forward --address 0.0.0.0 pod/\$WEB_POD 31443:8080 -n ${K8S_NS} &
+                    kubectl port-forward --address 0.0.0.0 pod/\$ADMIN_POD 31298:8080 -n ${K8S_NS} &
+                    kubectl port-forward --address 0.0.0.0 pod/\$IDENTITY_POD 31720:8080 -n ${K8S_NS} &
+                    kubectl port-forward --address 0.0.0.0 service/rabbitmq-clusterip-srv 31672:15672 -n ${K8S_NS} &
+                """
+            }
+        }
+    }
     post {
 
         success {
