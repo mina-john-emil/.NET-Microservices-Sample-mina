@@ -34,7 +34,7 @@ stages:
 
 
 - stage: Checkout
-  displayName: '📥 Checkout'
+  displayName: 'Checkout'
   jobs:
   - job: CheckoutJob
     displayName: 'Checkout from GitHub'
@@ -45,19 +45,19 @@ stages:
       displayName: 'Shallow clone repo'
 
     - script: |
-        echo "✅ Repo checked out"
+        echo "Repo checked out"
         echo "   Branch  : $(Build.SourceBranchName)"
         echo "   Commit  : $(Build.SourceVersion)"
         echo "   Build # : $(BUILD_NUMBER)"
       displayName: 'Print build info'
 
     - script: |
-        curl -s --max-time 10 https://github.com && echo "✅ GitHub is reachable" || (echo "❌ GitHub unreachable" && exit 1)
+        curl -s --max-time 10 https://github.com && echo "GitHub is reachable" || (echo " GitHub unreachable" && exit 1)
       displayName: 'Network connectivity check'
 
 
 - stage: BuildImages
-  displayName: '🐳 Build Images'
+  displayName: 'Build Images'
   dependsOn: Checkout
   jobs:
   - job: BuildDockerImages
@@ -76,7 +76,7 @@ stages:
           echo "──────────────────────────────────────"
           echo "Building $SERVICE ..."
           docker build --network=host -t microservices/$SERVICE:$(BUILD_NUMBER) -t microservices/$SERVICE:latest -f $DOCKERFILE .
-          echo "✅ $SERVICE built"
+          echo "$SERVICE built"
         }
 
         build_image orderservice             src/Services/Orders/OrderService/Dockerfile
@@ -91,14 +91,12 @@ stages:
         build_image microserviceswebfrontend    src/Web/Microservices.Web.Frontend/Microservices.Web.Frontend/Dockerfile
 
         echo ""
-        echo "✅ All images built successfully"
+        echo "All images built successfully"
       displayName: 'Build all Docker images'
 
-# ─────────────────────────────────────────────
-# STAGE 3 – Run Tests
-# ─────────────────────────────────────────────
+
 - stage: Test
-  displayName: '🧪 Test'
+  displayName: ' Test'
   dependsOn: BuildImages
   jobs:
   - job: RunTests
@@ -124,7 +122,7 @@ stages:
           --results-directory $(Agent.TempDirectory)/TestResults \
           || true
 
-        echo "✅ Tests done"
+        echo "Tests done"
       displayName: 'Run dotnet tests'
 
     - task: PublishTestResults@2
@@ -136,9 +134,7 @@ stages:
         failTaskOnFailedTests: false
         publishRunAttachments: true
 
-# ─────────────────────────────────────────────
-# STAGE 4 – Initialize KinD Cluster
-# ─────────────────────────────────────────────
+
 - stage: InitKinD
   displayName: '☸️ Initialize KinD'
   dependsOn: Test
@@ -157,18 +153,18 @@ stages:
         if kind get clusters 2>/dev/null | grep -q "$(KIND_CLUSTER)"; then
           echo "Deleting existing cluster..."
           kind delete cluster --name $(KIND_CLUSTER)
-          echo "Old cluster deleted ✅"
+          echo "Old cluster deleted "
         fi
 
         # Create fresh cluster
         echo "Creating fresh KinD cluster..."
         kind create cluster --name $(KIND_CLUSTER) --config $(KIND_CONFIG) --wait 120s
-        echo "✅ Cluster created"
+        echo "Cluster created"
 
         # Export kubeconfig for minajohn user
         mkdir -p /home/minajohn/.kube
         kind export kubeconfig --name $(KIND_CLUSTER) --kubeconfig $(KUBECONFIG_PATH)
-        echo "✅ Kubeconfig exported"
+        echo " Kubeconfig exported"
 
         echo "── Cluster nodes ──"
         kubectl get nodes
@@ -179,11 +175,9 @@ stages:
       env:
         KUBECONFIG: $(KUBECONFIG_PATH)
 
-# ─────────────────────────────────────────────
-# STAGE 5 – Load Images into KinD
-# ─────────────────────────────────────────────
+
 - stage: LoadImages
-  displayName: '📦 Load Images to KinD'
+  displayName: 'Load Images to KinD'
   dependsOn: InitKinD
   jobs:
   - job: LoadImagesToKinD
@@ -199,7 +193,7 @@ stages:
           kind load docker-image \
             --name $(KIND_CLUSTER) \
             microservices/$SERVICE:$(BUILD_NUMBER)
-          echo "✅ $SERVICE loaded"
+          echo "$SERVICE loaded"
         }
 
         load_image orderservice
@@ -214,14 +208,12 @@ stages:
         load_image microserviceswebfrontend
 
         echo ""
-        echo "✅ All images loaded into KinD cluster"
+        echo "All images loaded into KinD cluster"
       displayName: 'Load all images into KinD'
 
-# ─────────────────────────────────────────────
-# STAGE 6 – Helm Deploy
-# ─────────────────────────────────────────────
+
 - stage: Deploy
-  displayName: '🚀 Deploy'
+  displayName: 'Deploy'
   dependsOn: LoadImages
   jobs:
   - job: HelmDeploy
@@ -251,7 +243,7 @@ stages:
           --atomic \
           --debug
 
-        echo "✅ Helm deploy succeeded"
+        echo "Helm deploy succeeded"
       displayName: 'Helm upgrade --install'
       env:
         KUBECONFIG: $(KUBECONFIG_PATH)
@@ -260,7 +252,7 @@ stages:
 # STAGE 7 – Verify
 # ─────────────────────────────────────────────
 - stage: Verify
-  displayName: '✅ Verify'
+  displayName: 'Verify'
   dependsOn: Deploy
   jobs:
   - job: VerifyDeployment
@@ -279,7 +271,7 @@ stages:
         FAILED=$(kubectl get pods -n $(KUBE_NAMESPACE) --no-headers | grep -v "Running\|Completed" || true)
 
         if [ -n "$FAILED" ]; then
-          echo "❌ The following pods are not healthy:"
+          echo "The following pods are not healthy:"
           echo "$FAILED"
           exit 1
         fi
@@ -293,7 +285,7 @@ stages:
         helm list -n $(KUBE_NAMESPACE)
 
         echo ""
-        echo "✅ All pods are Running — deployment verified!"
+        echo "All pods are Running — deployment verified!"
       displayName: 'Verify pods & services'
       env:
         KUBECONFIG: $(KUBECONFIG_PATH)
@@ -308,11 +300,9 @@ stages:
       env:
         KUBECONFIG: $(KUBECONFIG_PATH)
 
-# ─────────────────────────────────────────────
-# STAGE 8 – Cleanup (always runs)
-# ─────────────────────────────────────────────
+
 - stage: Cleanup
-  displayName: '🧹 Cleanup'
+  displayName: 'Cleanup'
   dependsOn:
     - Verify
   condition: always()
@@ -339,7 +329,7 @@ stages:
 
     - script: |
         export KUBECONFIG=$(KUBECONFIG_PATH)
-        echo "=== ❌ PIPELINE FAILED — Debug info ==="
+        echo "===  PIPELINE FAILED — Debug info ==="
         echo "── Failed or Pending Pods ──"
         kubectl get pods -n $(KUBE_NAMESPACE) --no-headers 2>/dev/null \
           | grep -v "Running\|Completed" || echo "(none)"
