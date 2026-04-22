@@ -5,8 +5,7 @@ trigger:
 
 pool:
   name: Default          # ← your self-hosted agent (same VM as Jenkins)
-  # If you use Microsoft-hosted agents instead, replace with:
-  # vmImage: 'ubuntu-latest'
+
 
 variables:
   BUILD_NUMBER: $(Build.BuildId)
@@ -33,9 +32,7 @@ variables:
 
 stages:
 
-# ─────────────────────────────────────────────
-# STAGE 1 – Checkout & Validate
-# ─────────────────────────────────────────────
+
 - stage: Checkout
   displayName: '📥 Checkout'
   jobs:
@@ -58,9 +55,7 @@ stages:
         curl -s --max-time 10 https://github.com && echo "✅ GitHub is reachable" || (echo "❌ GitHub unreachable" && exit 1)
       displayName: 'Network connectivity check'
 
-# ─────────────────────────────────────────────
-# STAGE 2 – Build Docker Images
-# ─────────────────────────────────────────────
+
 - stage: BuildImages
   displayName: '🐳 Build Images'
   dependsOn: Checkout
