@@ -177,7 +177,7 @@ stages:
 
 
 - stage: LoadImages
-  displayName: 'Load Images to KinD'
+  displayName: 'Load Images'
   dependsOn: InitKinD
   jobs:
   - job: LoadImagesToKinD
