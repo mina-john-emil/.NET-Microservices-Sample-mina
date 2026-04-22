@@ -239,7 +239,7 @@ stages:
           --set global.imageTag=$(BUILD_NUMBER) \
           --set global.vmIP=$(VM_IP) \
           --wait \
-          --timeout 10m \
+          --timeout 15m \
           --atomic \
           --debug
 
