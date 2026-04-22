@@ -136,7 +136,7 @@ stages:
 
 
 - stage: InitKinD
-  displayName: '☸️ Initialize KinD'
+  displayName: 'Initialize KinD'
   dependsOn: Test
   jobs:
   - job: InitKinDCluster
@@ -248,9 +248,7 @@ stages:
       env:
         KUBECONFIG: $(KUBECONFIG_PATH)
 
-# ─────────────────────────────────────────────
-# STAGE 7 – Verify
-# ─────────────────────────────────────────────
+
 - stage: Verify
   displayName: 'Verify'
   dependsOn: Deploy
