@@ -2,28 +2,6 @@
 
 > A production-grade e-commerce microservices application built with **.NET**, containerized with **Docker**, orchestrated with **Kubernetes/Helm**, deployed via **CI/CD pipelines** (Jenkins & Azure DevOps), and managed with **ArgoCD GitOps** on **OpenShift / KinD / AKS**.
 
----
-
-## 📋 Table of Contents
-
-- [Project Overview](#-project-overview)
-- [Architecture](#-architecture)
-- [Microservices Breakdown](#-microservices-breakdown)
-- [Technology Stack](#-technology-stack)
-- [Repository Structure](#-repository-structure)
-- [Quick Start — Docker Compose](#-quick-start--docker-compose)
-- [Kubernetes Deployment (Local / KinD)](#-kubernetes-deployment-local--kind)
-- [Helm Deployment](#-helm-deployment)
-- [CI/CD Pipelines](#-cicd-pipelines)
-  - [Jenkins Pipeline](#jenkins-pipeline)
-  - [Azure DevOps Pipeline](#azure-devops-pipeline)
-- [GitOps with ArgoCD](#-gitops-with-argocd)
-- [OpenShift Deployment](#-openshift-deployment)
-- [Service Endpoints & Ports](#-service-endpoints--ports)
-- [Screenshots](#-screenshots)
-
----
-
 ## 🗂 Project Overview
 
 This project implements a complete **e-commerce platform** using the microservices pattern. Each business domain (products, orders, basket, payments, discounts, identity) is an independent service with its own database, communicating asynchronously via RabbitMQ and synchronously via gRPC.
